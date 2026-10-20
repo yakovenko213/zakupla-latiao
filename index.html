@@ -1,0 +1,3545 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Облік закупок</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;600;700;900&family=Inter:wght@400;700&display=swap">
+<!-- Firebase App (Compat) & Firestore & Auth SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<style>
+:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+/* Layout: two screens. A list of purchases (one row each, with totals) and a purchase screen with its own table. Swiss look: white ground, black rules, one red accent. */
+:root {
+  --bg: #ffffff;
+  --fg: #0a0a0a;
+  --muted: #666666;
+  --line: #d6d6d6;
+  --accent: #e30613;
+  --on-accent: #ffffff;
+  --accent-soft: #fff1f2;
+  --calc: #efefef;
+  --hover: #f7f7f7;
+  --good: #0a7a3d;
+  --bad: #b3261e;
+  --sans: "Archivo", Helvetica, Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 var(--sans);
+  padding-inline: clamp(16px, 3vw, 40px);
+  padding-block: 28px 48px;
+}
+.app { max-width: 1560px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* top bar */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; min-height: 44px; }
+h1 { margin: 0; font-size: 36px; line-height: 1; font-weight: 800; text-transform: uppercase; letter-spacing: -0.01em; text-wrap: balance; }
+.status { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.status i { width: 10px; height: 10px; background: var(--muted); display: inline-block; }
+.status[data-k="saved"] i, .status[data-k="local"] i { background: var(--good); }
+.status[data-k="saving"] i, .status[data-k="connecting"] i { background: var(--accent); }
+.status[data-k="error"] { color: var(--bad); }
+.status[data-k="error"] i { background: var(--bad); }
+
+/* controls */
+.btn { height: 36px; padding: 0 16px; border: 1px solid var(--fg); background: var(--bg); color: var(--fg); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--fg); color: var(--bg); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--fg); border-color: var(--fg); }
+.btn.armed { border-color: var(--bad); background: var(--bad); color: var(--on-accent); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.ul { height: 34px; border: 0; border-bottom: 2px solid var(--fg); background: transparent; border-radius: 0; padding: 0 2px; font-size: 14px; font-weight: 500; min-width: 0; }
+.ul:focus { outline: none; border-bottom-color: var(--accent); background: var(--accent-soft); }
+.ul::placeholder { color: var(--muted); font-weight: 400; }
+select.ul { cursor: pointer; padding-right: 4px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bar .spacer { flex: 1 1 16px; }
+#plFlt, #flt { width: 240px; max-width: 100%; }
+
+/* tables */
+.tablewrap { border-top: 3px solid var(--fg); overflow-x: auto; }
+table { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; }
+th, td { padding: 0; border-bottom: 1px solid var(--line); }
+thead th { text-align: left; padding: 8px 10px 7px; vertical-align: bottom; font-size: 11.5px; line-height: 1.25; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 3px solid var(--fg); }
+thead th.num { text-align: right; }
+th .m { display: block; margin-top: 3px; font-size: 10px; font-weight: 500; letter-spacing: 0.06em; color: var(--muted); }
+th .m b { font-weight: 700; color: var(--accent); }
+td.idx { text-align: left; padding-left: 4px; font-size: 12px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.sub { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted); min-height: 15px; }
+.sub.good { color: var(--good); }
+.sub.bad { color: var(--bad); }
+.v { font-variant-numeric: tabular-nums; }
+.v.nil { color: var(--muted); }
+
+/* purchases list */
+#plist { min-width: 1260px; }
+#plRows tr { cursor: pointer; }
+#plRows tr:hover td { background: var(--hover); }
+#plRows td { padding: 10px 10px; height: 64px; vertical-align: middle; }
+#plRows td.num { text-align: right; }
+#plRows td.act { padding: 0 4px; text-align: center; }
+.pname { font-weight: 700; font-size: 15px; }
+.open { border: 0; background: transparent; padding: 0; font-size: 15px; font-weight: 700; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.open:hover { color: var(--accent); }
+.tag { display: inline-block; margin-left: 8px; padding: 1px 6px; border: 1px solid var(--muted); color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; vertical-align: middle; }
+.st { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border: 1px solid var(--line); background: var(--bg); font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; white-space: nowrap; }
+.st:hover { border-color: var(--fg); }
+.st i { width: 10px; height: 10px; display: inline-block; background: #b5b5b5; }
+.st-transit i { background: var(--fg); }
+.st-received i { background: var(--good); }
+
+/* purchase screen */
+.nameIn { width: 100%; height: 56px; border: 0; border-bottom: 3px solid var(--fg); background: transparent; border-radius: 0; padding: 0 2px; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.01em; }
+.nameIn:focus { outline: none; border-bottom-color: var(--accent); background: var(--accent-soft); }
+.nameIn::placeholder { color: var(--muted); }
+.meta { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+.mf { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mf > span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.mf .ul { width: 170px; max-width: 100%; }
+.mf .ul.rate { width: 110px; }
+.auto-fin-toggle { flex: 1 1 260px; justify-content: flex-end; }
+.switch-row { min-height: 44px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.switch-row input { position: absolute; opacity: 0; pointer-events: none; }
+.switch-ui { position: relative; width: 44px; height: 24px; flex: 0 0 auto; border-radius: 999px; background: #c9cbd6; transition: background .15s; }
+.switch-ui::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s; }
+.switch-row input:checked + .switch-ui { background: var(--primary); }
+.switch-row input:checked + .switch-ui::after { transform: translateX(20px); }
+.switch-row input:focus-visible + .switch-ui { outline: 2px solid var(--ring); outline-offset: 2px; }
+.switch-copy { font-size: 13px; line-height: 1.25; color: var(--ink); }
+.switch-copy small { display: block; color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); border-top: 3px solid var(--fg); }
+.stat { padding: 12px 16px 6px; border-left: 1px solid var(--line); min-width: 0; }
+.stat:first-child { padding-left: 0; border-left: 0; }
+.stat .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.stat .big { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin-top: 4px; line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat .s { font-size: 12px; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+#grid { min-width: 2060px; }
+tbody tr:hover td:not(.calc) { background: var(--hover); }
+td.cell { padding: 4px 6px; vertical-align: middle; }
+td.cell .sub { text-align: right; padding-right: 4px; }
+td.calc { background: var(--calc); padding: 7px 10px; text-align: right; vertical-align: middle; }
+.in { width: 100%; height: 32px; background: transparent; border: 0; border-bottom: 1px solid transparent; border-radius: 0; padding: 0 6px; font-size: 14px; }
+.in.numin { text-align: right; font-variant-numeric: tabular-nums; }
+.in:hover { border-bottom-color: var(--muted); }
+.in:focus { outline: none; border-bottom: 2px solid var(--accent); background: var(--accent-soft); }
+.in::placeholder { color: var(--muted); opacity: 0.6; }
+.c-art .in { font-weight: 700; }
+td.c-photo { text-align: center; padding: 4px; }
+.thumb { width: 46px; height: 46px; padding: 0; border: 0; background: var(--calc); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; color: var(--muted); font-size: 18px; font-weight: 700; }
+.thumb:hover { background: var(--accent); color: var(--on-accent); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+td.act { text-align: center; }
+.del { height: 32px; min-width: 32px; padding: 0 6px; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; font-weight: 700; }
+.del:hover { color: var(--bad); border-color: var(--line); }
+.del.armed { color: var(--on-accent); background: var(--bad); border-color: var(--bad); font-size: 11px; }
+tfoot td { padding: 9px 10px; text-align: right; font-weight: 700; border-top: 3px solid var(--fg); border-bottom: 0; vertical-align: top; }
+tfoot td.lbl { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding-left: 4px; }
+tfoot .sub { font-weight: 400; min-height: 0; }
+
+.empty { padding: 40px 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; color: var(--muted); }
+.empty p { margin: 0; max-width: 52ch; font-size: 15px; }
+.hint { font-size: 12px; color: var(--muted); }
+.selbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.selText { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); margin-right: 4px; }
+.selbar .btn { height: 32px; }
+td.sel { background: var(--accent-soft) !important; box-shadow: inset 0 0 0 2px var(--accent); }
+td.mgd { background: var(--hover); box-shadow: inset 3px 0 0 var(--fg); }
+td.mgd.sel { box-shadow: inset 0 0 0 2px var(--accent); }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 3px 40px; font-size: 12px; line-height: 1.5; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+.notes b { color: var(--fg); }
+.fin { border-top: 3px solid var(--fg); padding-top: 14px; display: flex; flex-direction: column; gap: 14px; }
+.fin h2 { margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; }
+.finform { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; }
+.finform .ul.w1 { width: 150px; } .finform .ul.w2 { width: 130px; } .finform .ul.w3 { width: 200px; }
+.kpis { display: flex; flex-wrap: wrap; gap: 8px 36px; }
+.kpi { display: flex; flex-direction: column; }
+.kpi span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.kpi b { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.kpi b.good, td.good { color: var(--good); }
+table.ft { table-layout: auto; }
+.ft td { padding: 8px 10px; vertical-align: middle; }
+.ft thead th { white-space: nowrap; }
+.ft .x { height: 28px; padding: 0 10px; }
+/* ===== Theme: Algolia-style (black gradient hero, white canvas, hairline cards, Sora + Inter) ===== */
+:root { --primary: #003dff; --primary-hover: #1e59ff; --violet: #b75aff; --ring: #3b82f6; --ink: #23263b; --ink-muted: #484c7a; --caption-muted: #9698c3; --surface-1: #f2f2f2; --hairline: #e5e7eb;
+  --bg: #ffffff; --card: #ffffff; --fg: #23263b; --muted: #6b6f9a; --line: #e5e7eb; --accent: #003dff; --accent-soft: #eef2ff; --calc: #f7f7f8; --hover: #f7f7f8; --good: #14804a; --bad: #c93b3b;
+  --sans: "Inter", sans-serif; --head: "Sora", sans-serif; }
+body { background: #fff; color: var(--ink); font-family: var(--sans); padding-block: 0 64px; }
+h1, h2, .nameIn, .kpi b, .stat .big { font-family: var(--head); }
+.top { background: radial-gradient(60% 140% at 0% 100%, #1e59ff 0%, transparent 62%), radial-gradient(60% 140% at 100% 100%, #b75aff 0%, transparent 62%), #000; background-size: 140% 140%; animation: drift 22s ease-in-out infinite alternate; color: #fff; padding: 56px 24px 40px; margin-bottom: 24px; border: 0; border-radius: 0; box-shadow: none; align-items: flex-end; }
+@keyframes drift { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+@media (prefers-reduced-motion: reduce) { .top { animation: none; } }
+h1 { font-size: clamp(34px, 6vw, 64px); font-weight: 700; line-height: 1.02; letter-spacing: -0.05em; text-transform: none; color: #fff; }
+.top .status { background: rgba(255,255,255,.14); color: #fff; border-radius: 6px; padding: 6px 12px; text-transform: none; letter-spacing: 0; font-size: 14px; }
+.btn { height: 44px; padding: 0 24px; border: 1px solid var(--hairline); border-radius: 9999px; background: #fff; color: var(--ink); font-family: var(--head); font-size: 16px; font-weight: 400; text-transform: none; letter-spacing: 0; transition: background .15s; }
+.btn:hover { background: #f7f7f8; color: var(--ink); }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+.btn.armed, .btn.armed:hover { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.x { height: 32px; padding: 0 14px; font-size: 14px; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.ul { height: 44px; border: 1px solid var(--hairline); border-radius: 8px; background: #fff; padding: 0 16px; font-family: var(--sans); font-size: 16px; font-weight: 400; color: var(--ink); }
+.ul:focus { border-color: var(--ring); background: #fff; box-shadow: none; outline: 2px solid var(--ring); outline-offset: -1px; }
+.mf > span, .kpi span, .stat .k { text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; font-weight: 400; color: var(--ink-muted); }
+.meta, .notes, .stats, .tablewrap, .fin { background: #fff; border: 1px solid var(--hairline); border-radius: 12px; box-shadow: none; }
+.meta { padding: 20px 24px; }
+.notes, .fin { padding: 24px; }
+.stats { padding: 8px 24px; }
+.fin .tablewrap { border-radius: 12px; }
+.nameIn { height: 56px; border: 1px solid var(--hairline); border-radius: 8px; background: #fff; box-shadow: none; padding: 0 16px; font-size: 28px; font-weight: 700; letter-spacing: -0.03em; text-transform: none; color: var(--ink); }
+.nameIn:focus { border-color: var(--ring); background: #fff; }
+.tablewrap { overflow-x: auto; }
+thead th { background: #fff; text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; font-weight: 400; color: var(--ink-muted); padding: 14px 10px; border-bottom: 1px solid var(--hairline); }
+th .m { letter-spacing: 0; text-transform: none; color: var(--caption-muted); }
+th .m b { color: var(--ink); }
+td { border-color: var(--hairline); }
+td.idx { color: var(--caption-muted); }
+.in { border-radius: 6px; border: 1px solid transparent; font-family: var(--sans); }
+.in:hover { border-color: var(--hairline); }
+.in:focus { border: 1px solid var(--ring); background: #fff; }
+td.calc { background: var(--calc); }
+.ov { width: 100%; box-sizing: border-box; text-align: right; font-weight: 700; background: transparent; }
+.ov.ovr { color: var(--primary); }
+.thumb { border-radius: 8px; }
+.thumb:hover { background: var(--ink); }
+tfoot td { background: var(--surface-1); border-top: 1px solid var(--hairline); font-family: var(--head); }
+tfoot td.lbl { text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; font-family: var(--sans); }
+.open { font-weight: 700; color: var(--ink); }
+.open:hover { color: var(--primary); }
+.tag { border-radius: 6px; text-transform: none; letter-spacing: 0; }
+.st { border-radius: 9999px; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 400; background: #fff; border-color: var(--hairline); }
+.st:hover { border-color: var(--ink-muted); }
+.st i { background: var(--caption-muted); }
+.st-transit i { background: #d99a1d; }
+.st-received i { background: var(--good); }
+.selText { text-transform: none; letter-spacing: 0; }
+td.sel { box-shadow: inset 0 0 0 2px var(--ring); }
+td.mgd { box-shadow: inset 3px 0 0 var(--ring); }
+td.idx { cursor: pointer; vertical-align: middle; }
+.fin h2 { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; text-transform: none; }
+.kpis { gap: 16px; }
+.kpi { background: var(--surface-1); border-radius: 12px; padding: 20px 24px; min-width: 180px; }
+.kpi b { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; }
+.kpi b.good, td.good { color: var(--good); }
+td.good { font-weight: 700; }
+a, .lnk { color: var(--primary); }
+.cthumb { width: 48px; height: 48px; background: var(--surface-1); border: 1px solid var(--hairline); border-radius: 8px; overflow: hidden; }
+.cthumb img, .cmphoto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.mbox { background: #fff; border: 1px solid var(--hairline); border-radius: 12px; padding: 24px; width: min(460px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; gap: 16px; }
+.mbox h2 { margin: 0; font: 700 24px/1.1 var(--head); letter-spacing: -0.03em; }
+.mbox .ul { width: 100%; box-sizing: border-box; }
+.mrow { display: flex; gap: 12px; } .mrow > * { flex: 1; }
+.cmphoto { width: 96px; height: 96px; border: 1px dashed var(--caption-muted); border-radius: 12px; background: var(--surface-1); cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--ink-muted); padding: 0; font: inherit; }
+/* Column tinting with status column added */
+table:has(#rows) th:nth-child(11), table:has(#rows) th:nth-child(12), #rows td:nth-child(11), #rows td:nth-child(12), table:has(#rows) tfoot td:nth-child(10), table:has(#rows) tfoot td:nth-child(11) { background: #edf3ff; }
+table:has(#rows) th:nth-child(13), table:has(#rows) th:nth-child(14), #rows td:nth-child(13), #rows td:nth-child(14), table:has(#rows) tfoot td:nth-child(12), table:has(#rows) tfoot td:nth-child(13) { background: #eaf6ef; }
+table:has(#rows) th:nth-child(15), table:has(#rows) th:nth-child(16), #rows td:nth-child(15), #rows td:nth-child(16), table:has(#rows) tfoot td:nth-child(14), table:has(#rows) tfoot td:nth-child(15) { background: #fff5e6; }
+
+/* Sticky SKU and Photo columns */
+#grid th.col-sku,
+#grid td.c-art,
+#grid tfoot td.f-sku {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: #ffffff;
+}
+#grid th.col-photo,
+#grid td.c-photo,
+#grid tfoot td.f-photo {
+  position: sticky;
+  left: 140px;
+  z-index: 4;
+  background: #ffffff;
+  border-right: 1px solid var(--hairline);
+  box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.08);
+}
+#grid thead th.col-sku,
+#grid thead th.col-photo {
+  z-index: 8;
+  background: #ffffff;
+}
+#grid tfoot td.f-sku,
+#grid tfoot td.f-photo {
+  z-index: 6;
+  background: var(--surface-1);
+}
+#grid tbody tr:hover td.c-art,
+#grid tbody tr:hover td.c-photo {
+  background: var(--hover);
+}
+#grid tbody tr.row-rcv td.c-art,
+#grid tbody tr.row-rcv td.c-photo {
+  background-color: #f0f9f3 !important;
+}
+#grid tbody tr.row-rcv:hover td.c-art,
+#grid tbody tr.row-rcv:hover td.c-photo {
+  background-color: #e4f6eb !important;
+}
+
+/* Status badge dropdown */
+.table-wrap td.c-status { text-align: center; vertical-align: middle; padding: 0 8px; }
+.table-wrap .status-sel {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  min-width: 0 !important;
+  max-width: 134px;
+  height: 34px;
+  padding: 0 30px 0 12px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 32px;
+  border-radius: 9999px;
+  border: 1px solid var(--hairline);
+  background-color: #fff;
+  cursor: pointer;
+  transition: all .15s ease;
+  display: inline-block;
+  margin: 0 auto;
+  text-align: left;
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6f9a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+.table-wrap .status-sel:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.1);
+}
+.table-wrap .status-sel:focus {
+  outline: none;
+  border-color: currentColor;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.table-wrap .status-sel[data-st="Замовлено"] {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231d4ed8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+.table-wrap .status-sel[data-st="Замовлено"]:hover {
+  background-color: #dbeafe;
+  border-color: #93c5fd;
+}
+.table-wrap .status-sel[data-st="На складі"] {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2315803d' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+.table-wrap .status-sel[data-st="На складі"]:hover {
+  background-color: #dcfce7;
+  border-color: #86efac;
+}
+.table-wrap .status-sel option {
+  background: #ffffff;
+  color: #23263b;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 12px;
+}
+.c-rcv { text-align: center; vertical-align: middle; padding: 0 2px; }
+.chk-rcv-wrap { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 4px; }
+.chk-rcv { appearance: none; -webkit-appearance: none; width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; display: inline-grid; place-content: center; transition: all 0.12s ease; margin: 0; }
+.chk-rcv:hover { border-color: var(--good); }
+.chk-rcv:checked { background: var(--good); border-color: var(--good); }
+.chk-rcv:checked::before { content: ""; width: 9px; height: 5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translate(1px, -1px); }
+.c-rcv.rcv, td.idx.rcv { background: #daf0e2 !important; }
+td.idx.rcv { color: var(--good); font-weight: 800; }
+td.idx.rcv small { color: #086130 !important; }
+#grid tbody tr.row-rcv td:not(.calc):not(.sel) { background-color: #f0f9f3 !important; }
+#grid tbody tr.row-rcv td.calc:not(.sel) { background-color: #e3f5ea !important; }
+#grid tbody tr.row-rcv td.c-rcv, #grid tbody tr.row-rcv td.idx { background-color: #daf0e2 !important; }
+#grid tbody tr.row-rcv:hover td:not(.sel):not(.calc) { background-color: #e4f6eb !important; }
+#grid tbody tr.row-rcv:hover td:not(.sel).calc { background-color: #d7efe0 !important; }
+.in.note { text-align: left; }
+#mNote { width: 100%; box-sizing: border-box; min-height: 84px; max-height: 45vh; field-sizing: content; }
+
+/* ===== Обгортка таблиці ===== */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* ===== Сама таблиця ===== */
+.table-wrap table {
+  width: 100%;
+  min-width: 2288px;          /* загальний мінімум: нижче нього — скрол, а не стискання */
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;        /* ширини колонок задаємо явно через <colgroup> або th */
+}
+
+/* ===== Клітинки ===== */
+.table-wrap th,
+.table-wrap td {
+  padding: 8px 12px;
+  box-sizing: border-box;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-wrap th {
+  font-size: 11.5px;
+  line-height: 1.25;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  text-align: right;
+  white-space: normal;        /* дозволяємо перенос заголовків */
+  word-break: normal;
+  overflow-wrap: break-word;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  border-bottom: 2px solid var(--fg);
+  z-index: 2;
+}
+
+.table-wrap td {
+  white-space: nowrap;        /* значення в одному рядку */
+  text-align: right;
+}
+
+/* Текстові колонки зліва */
+.table-wrap th.col-text,
+.table-wrap td.col-text,
+.table-wrap td.c-art,
+.table-wrap td.idx { text-align: left; }
+
+/* ===== Ширини колонок ===== */
+.col-parcel   { width: 90px;  min-width: 90px;  }   /* Посилка */
+.col-received { width: 80px;  min-width: 80px;  }   /* Отримана */
+.col-sku      { width: 140px; min-width: 140px; }   /* Артикул */
+.col-photo    { width: 130px; min-width: 130px; }   /* Фото */
+.col-qty      { width: 90px;  min-width: 90px;  }   /* К-сть */
+.col-sum      { width: 120px; min-width: 120px; }   /* Сума закупки */
+.col-unit     { width: 120px; min-width: 120px; }   /* Вартість за шт */
+.col-weight   { width: 100px; min-width: 100px; }   /* Вага */
+.col-ttn      { width: 140px; min-width: 140px; }   /* ТТН */
+.col-money    { width: 150px; min-width: 150px; }   /* Планова/фактична вартість, собівартість */
+.col-wparcel  { width: 150px; min-width: 150px; }   /* Вага посилки */
+.col-retail   { width: 140px; min-width: 140px; }   /* Роздрібна вартість */
+.col-comment  { width: 220px; min-width: 220px; }   /* Коментар */
+.col-actions  { width: 48px;  min-width: 48px;  }   /* × */
+
+/* ===== Фото ===== */
+.table-wrap td img,
+.photo-cell,
+.thumb {
+  display: block;
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin: 0 auto;
+}
+.thumb {
+  border: 1px dashed var(--line);
+  background: var(--calc);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 24px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+.thumb:hover {
+  background: var(--fg);
+  color: #fff;
+  border-color: var(--fg);
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 9px;
+}
+
+/* ===== Поля вводу всередині клітинок ===== */
+.table-wrap td input,
+.table-wrap td textarea,
+.in {
+  width: 100%;
+  min-width: 0 !important;               /* важливо: інакше input розпирає колонку */
+  box-sizing: border-box !important;
+  font: inherit;
+  text-align: inherit;
+  border: 0;
+  background: transparent;
+  padding: 4px 6px;
+  height: 34px;
+}
+.in.numin { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ===== Рядок «Разом» ===== */
+.table-wrap tfoot td {
+  position: sticky;
+  bottom: 0;
+  background: #f3f4f6;
+  font-weight: 600;
+  border-top: 2px solid var(--fg);
+  border-bottom: 0;
+  z-index: 2;
+  padding: 10px 12px;
+}
+
+/* ===== Липкі перші колонки (щоб при скролі було видно, де ти) ===== */
+.table-wrap th:nth-child(1),
+.table-wrap td.idx {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #fff;
+}
+.table-wrap th:nth-child(1) {
+  z-index: 5;
+  background: #fff;
+}
+.table-wrap tr.row-rcv td.idx {
+  background-color: #daf0e2 !important;
+}
+
+/* ===== Адаптив ===== */
+@media (max-width: 1400px) {
+  .table-wrap table { min-width: 1800px; }
+  .col-comment { width: 180px; min-width: 180px; }
+}
+
+@media (max-width: 900px) {
+  .table-wrap th, .table-wrap td { padding: 6px 8px; font-size: 13px; }
+  .table-wrap td img, .photo-cell, .thumb { width: 72px; height: 72px; }
+  .col-photo { width: 96px; min-width: 96px; }
+  .table-wrap td.c-status { padding-inline: 6px; }
+  .table-wrap .status-sel {
+    height: 32px;
+    padding-left: 10px;
+    padding-right: 26px;
+    font-size: 12px;
+    background-position: right 8px center;
+  }
+}
+
+/* ===== Панель кнопок над таблицею ===== */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;            /* кнопки переносяться, а не лізуть одна на одну */
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.toolbar .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (max-width: 720px) {
+  .top { padding: 28px 16px 20px; }
+  .meta { padding: 16px; gap: 12px 16px; }
+  .meta .mf { flex: 1 1 100%; }
+  .meta .ul, .meta select.ul { width: 100% !important; box-sizing: border-box; }
+  .stats { padding: 4px 16px; }
+  .nameIn { font-size: 22px; height: 48px; }
+  .fin, .notes { padding: 16px; }
+  .mbox { padding: 16px; }
+}
+
+/* Retained for reference; disabled in favour of the compact desktop-style table below. */
+@media (max-width: 0px) {
+  body { padding-inline: 10px; padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+  .app { gap: 12px; }
+  .top { margin-inline: -10px; margin-bottom: 12px; gap: 12px; }
+  .top h1 { width: 100%; font-size: 34px; order: -1; }
+  .top > div { width: 100%; margin-left: 0 !important; flex-wrap: wrap; }
+  #back { order: 2; }
+  #fbOpenBtn, #logoutBtn { flex: 1 1 auto; padding-inline: 14px; }
+
+  #vDetail > div { gap: 12px !important; }
+  .stats { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 8px; padding: 10px; }
+  .stat, .stat:first-child { flex: 0 0 78%; scroll-snap-align: start; border: 0; border-radius: 10px; background: var(--surface-1); padding: 14px; }
+  .stat .big { font-size: 24px; }
+  .toolbar { align-items: stretch; gap: 8px; }
+  .toolbar .hint { display: none; }
+  .toolbar .spacer { display: none; }
+  .toolbar .actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .toolbar .actions .btn { width: 100%; height: 46px; padding-inline: 10px; font-size: 14px; }
+  .toolbar .actions #addBtn { grid-column: 1 / -1; order: -1; height: 52px; font-size: 16px; }
+  .selbar { width: 100%; }
+
+  .table-wrap { overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  .table-wrap table, #grid { display: block; width: 100%; min-width: 0; table-layout: auto; }
+  #grid colgroup, #grid thead { display: none; }
+  #grid tbody { display: flex; flex-direction: column; gap: 12px; }
+  #grid tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 10px; width: 100%; overflow: hidden; border: 1px solid var(--hairline); border-radius: 14px; background: #fff; box-shadow: 0 2px 10px rgba(35,38,59,.06); }
+  #grid tbody td,
+  #grid tbody td.idx,
+  #grid tbody td.c-art,
+  #grid tbody td.c-photo { position: static; display: flex; flex-direction: column; justify-content: center; width: auto; min-width: 0; height: auto; padding: 9px 12px; overflow: visible; white-space: normal; text-align: left; border: 0; border-bottom: 1px solid var(--hairline); background: #fff; box-shadow: none; }
+  #grid tbody td:nth-child(odd) { border-right: 1px solid var(--hairline); }
+  #grid tbody td::before { display: block; margin-bottom: 4px; color: var(--ink-muted); font-size: 10px; line-height: 1.2; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+  #grid tbody td:nth-child(1)::before { content: "Посилка"; }
+  #grid tbody td:nth-child(2)::before { content: "Отримана"; }
+  #grid tbody td:nth-child(3)::before { content: "Артикул"; }
+  #grid tbody td:nth-child(4)::before { content: "Фото"; }
+  #grid tbody td:nth-child(5)::before { content: "Статус"; }
+  #grid tbody td:nth-child(6)::before { content: "Кількість, шт"; }
+  #grid tbody td:nth-child(7)::before { content: "Сума закупки, ₴"; }
+  #grid tbody td:nth-child(8)::before { content: "Вартість за шт, ₴"; }
+  #grid tbody td:nth-child(9)::before { content: "Загальна вага, кг"; }
+  #grid tbody td:nth-child(10)::before { content: "ТТН посилки"; }
+  #grid tbody td:nth-child(11)::before { content: "Доставка · план, ₴"; }
+  #grid tbody td:nth-child(12)::before { content: "Доставка · факт, ₴"; }
+  #grid tbody td:nth-child(13)::before { content: "Собівартість · план, ₴/шт"; }
+  #grid tbody td:nth-child(14)::before { content: "Собівартість · факт, ₴/шт"; }
+  #grid tbody td:nth-child(15)::before { content: "Вага посилки · план, кг"; }
+  #grid tbody td:nth-child(16)::before { content: "Вага посилки · факт, кг"; }
+  #grid tbody td:nth-child(17)::before { content: "Роздріб, ₴/шт"; }
+  #grid tbody td:nth-child(18)::before { content: "Коментар"; }
+  #grid tbody td:nth-child(1),
+  #grid tbody td:nth-child(3),
+  #grid tbody td:nth-child(5),
+  #grid tbody td:nth-child(10),
+  #grid tbody td:nth-child(18),
+  #grid tbody td:nth-child(19) { grid-column: 1 / -1; border-right: 0; }
+  #grid tbody td:nth-child(1) { min-height: 48px; flex-direction: row; align-items: center; justify-content: space-between; color: var(--primary); font-size: 16px; }
+  #grid tbody td:nth-child(1)::before { margin: 0; }
+  #grid tbody td:nth-child(2) { align-items: flex-start; }
+  #grid tbody td:nth-child(4) { align-items: flex-start; }
+  #grid tbody td:nth-child(19) { align-items: stretch; padding: 8px 12px; border-bottom: 0; }
+  #grid tbody td:nth-child(19)::before { content: none; }
+  #grid tbody td:nth-child(19) .del { width: 100%; height: 44px; border: 1px solid #f1caca; border-radius: 8px; color: var(--bad); }
+  #grid .in, .table-wrap .status-sel { min-height: 46px; padding: 8px 10px; border: 1px solid var(--hairline); border-radius: 8px; background-color: #fff; font-size: 16px; text-align: left; }
+  #grid .in.numin { text-align: left; }
+  #grid .calc .in { background: #f7f7f8; }
+  #grid .sub { margin-top: 3px; padding: 0; text-align: left; }
+  #grid .thumb, #grid .thumb img { width: 72px; height: 72px; margin: 0; }
+  #grid .chk-rcv { width: 30px; height: 30px; }
+
+  #grid tfoot { display: block; margin-top: 12px; padding: 12px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--surface-1); }
+  #grid tfoot tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+  #grid tfoot td { display: none; position: static; padding: 8px; border: 0; background: transparent; text-align: left; }
+  #grid tfoot td.lbl { display: block; grid-column: 1 / -1; padding: 0 0 4px; font-size: 15px; }
+  #grid tfoot td:has(> #f-qty), #grid tfoot td:has(> #f-total), #grid tfoot td:has(> #f-weight),
+  #grid tfoot td:has(> #f-planDel), #grid tfoot td:has(> #f-factDel), #grid tfoot td:has(> #f-planCost),
+  #grid tfoot td:has(> #f-factCost), #grid tfoot td:has(> #f-pwPlan), #grid tfoot td:has(> #f-pwFact), #grid tfoot td:has(> #f-retail) { display: block; }
+  #grid tfoot td::before { display: block; margin-bottom: 2px; color: var(--ink-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+  #grid tfoot td:has(> #f-qty)::before { content: "Кількість"; }
+  #grid tfoot td:has(> #f-total)::before { content: "Закупка"; }
+  #grid tfoot td:has(> #f-weight)::before { content: "Вага"; }
+  #grid tfoot td:has(> #f-planDel)::before { content: "Доставка · план"; }
+  #grid tfoot td:has(> #f-factDel)::before { content: "Доставка · факт"; }
+  #grid tfoot td:has(> #f-planCost)::before { content: "Собівартість · план"; }
+  #grid tfoot td:has(> #f-factCost)::before { content: "Собівартість · факт"; }
+  #grid tfoot td:has(> #f-pwPlan)::before { content: "Вага посилки · план"; }
+  #grid tfoot td:has(> #f-pwFact)::before { content: "Вага посилки · факт"; }
+  #grid tfoot td:has(> #f-retail)::before { content: "Продажі"; }
+}
+
+/* Phone: keep the desktop table, make it denser and swipeable horizontally. */
+@media (max-width: 720px) {
+  body { padding-inline: 8px; }
+  .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-inline: contain;
+    touch-action: pan-x pan-y;
+  }
+  .table-wrap table, #grid { min-width: 1640px; }
+  .table-wrap th, .table-wrap td { padding: 4px 5px; font-size: 11px; }
+  .table-wrap th { font-size: 9px; line-height: 1.15; }
+  .table-wrap th .m { margin-top: 2px; font-size: 8px; }
+  .table-wrap td input, .table-wrap td textarea, #grid .in {
+    height: 30px;
+    padding: 3px 4px;
+    font-size: 12px;
+  }
+  .table-wrap td img, .table-wrap .photo-cell, .table-wrap .thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 7px;
+  }
+  #grid .col-parcel { width: 62px !important; min-width: 62px; }
+  #grid .col-received { width: 58px !important; min-width: 58px; }
+  #grid .col-sku { width: 100px !important; min-width: 100px; }
+  #grid .col-photo { width: 66px !important; min-width: 66px; }
+  #grid .col-status { width: 112px !important; min-width: 112px; }
+  #grid .col-qty { width: 62px !important; min-width: 62px; }
+  #grid .col-sum, #grid .col-unit { width: 88px !important; min-width: 88px; }
+  #grid .col-weight { width: 72px !important; min-width: 72px; }
+  #grid .col-ttn { width: 96px !important; min-width: 96px; }
+  #grid .col-money { width: 112px !important; min-width: 112px; }
+  #grid .col-wparcel { width: 108px !important; min-width: 108px; }
+  #grid .col-retail { width: 100px !important; min-width: 100px; }
+  #grid .col-comment { width: 130px !important; min-width: 130px; }
+  #grid .col-actions { width: 40px !important; min-width: 40px; }
+  #grid th.col-photo, #grid td.c-photo, #grid tfoot td.f-photo { left: 100px; }
+  .table-wrap .status-sel { height: 30px; padding: 3px 22px 3px 6px; font-size: 10px; }
+  .table-wrap tfoot td { padding: 6px 5px; }
+}
+textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertical; font-family: var(--sans); line-height: 1.4; }
+#grid td { vertical-align: middle; }
+#grid tbody tr:hover td:not(.sel):not(.calc) { background-color: #fafbff; }
+
+/* Light visual grouping for rows that belong to one merged parcel. */
+#grid tbody tr.parcel-group td:not(.sel):not(.parcel-group-sentinel) {
+  background-color: var(--parcel-bg) !important;
+}
+#grid tbody tr.parcel-group:hover td:not(.sel):not(.parcel-group-sentinel) {
+  background-color: var(--parcel-hover) !important;
+}
+#grid tbody tr.parcel-group-start td {
+  border-top-color: var(--parcel-edge);
+}
+#grid tbody tr.parcel-group-end td {
+  border-bottom-color: var(--parcel-edge);
+}
+#grid thead th { vertical-align: bottom; line-height: 1.25; }
+.fbox { width: min(980px, 100%); }
+.fbox .fin { border: 0; padding: 0; }
+.fhead { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.mact { display: flex; gap: 12px; justify-content: flex-end; }
+
+
+.lb { position: fixed; inset: 0; z-index: 20; background: rgba(10, 10, 10, 0.82); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px 16px; }
+.lb img { max-width: min(92vw, 720px); max-height: 70vh; background: #fff; }
+.lb .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+/* ===== Авторизація ===== */
+.auth-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+.auth-card {
+  width: min(420px, 100%);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 36px 32px;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-sizing: border-box;
+  animation: authFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes authFadeIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.auth-badge {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #e30613;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.auth-title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+.auth-desc {
+  margin: -6px 0 2px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #64748b;
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+}
+.auth-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #0f172a;
+  background: #f8fafc;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+.auth-input:focus {
+  outline: none;
+  border-color: #e30613;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.12);
+}
+.auth-pwd-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.auth-pwd-wrap .auth-input {
+  padding-right: 44px;
+}
+.auth-eye-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #64748b;
+  padding: 0;
+}
+.auth-eye-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.auth-err {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}
+.auth-err.shake-anim {
+  animation: authShake 0.35s ease-in-out;
+}
+@keyframes authShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.auth-submit {
+  width: 100%;
+  height: 46px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.auth-footer {
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: -2px;
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen" class="auth-wrap" hidden>
+  <div class="auth-card">
+    <div class="auth-badge">Облік закупок Latiao</div>
+    <h2 class="auth-title">Авторизація</h2>
+    <p class="auth-desc">Введіть облікові дані для доступу до системи.<br>Сесія зберігається на <b>7 днів</b> на цьому пристрої.</p>
+
+    <form id="authForm" class="auth-form" autocomplete="on">
+      <label class="auth-field">
+        <span>Логін</span>
+        <input class="auth-input" id="authLogin" type="text" autocomplete="username" placeholder="admin" required autofocus>
+      </label>
+
+      <label class="auth-field">
+        <span>Пароль</span>
+        <div class="auth-pwd-wrap">
+          <input class="auth-input" id="authPass" type="password" autocomplete="current-password" placeholder="••••••••" required>
+          <button type="button" class="auth-eye-btn" id="authEyeBtn" title="Показати/приховати пароль" aria-label="Показати пароль">👁</button>
+        </div>
+      </label>
+
+      <div id="authError" class="auth-err" hidden>
+        <span>⚠️</span>
+        <span id="authErrorMsg">Невірний логін або пароль</span>
+      </div>
+
+      <button type="submit" class="btn primary auth-submit" id="authSubmitBtn">Увійти в систему</button>
+    </form>
+
+    <div class="auth-footer">
+      🔒 Захищений доступ · Авторизація 1 раз на тиждень
+    </div>
+  </div>
+</div>
+
+<div class="app" hidden>
+  <div class="top">
+    <button class="btn" id="back" type="button" hidden>← Усі закупки</button>
+    <h1 id="h1">Закупки</h1>
+    <div style="display:inline-flex;align-items:center;gap:10px;margin-left:auto">
+      <div class="status" id="status" data-k="connecting" style="cursor:pointer" title="Натисніть для налаштування бази даних"><i></i><span id="statusText">підключення…</span></div>
+      <button class="btn" id="fbOpenBtn" type="button" title="Налаштування Firebase">🔥 Firebase</button>
+      <button class="btn" id="logoutBtn" type="button" title="Вийти з облікового запису">Вийти</button>
+    </div>
+  </div>
+
+  <!-- LIST -->
+  <section id="vList" aria-label="Список закупок">
+    <div class="bar" style="margin-bottom: 14px">
+      <input class="ul" id="plFlt" type="search" placeholder="Пошук за назвою закупки" autocomplete="off" aria-label="Пошук за назвою закупки">
+      <span class="spacer"></span>
+      <button class="btn" id="catBtn" type="button">Каталог товарів</button>
+      <button class="btn" id="finBtn" type="button">Фін облік</button>
+      <button class="btn primary" id="createBtn" type="button" disabled>+ Створити закупку</button>
+    </div>
+    <div class="tablewrap">
+      <table id="plist">
+        <colgroup>
+          <col style="width:44px"><col style="width:auto"><col style="width:108px"><col style="width:140px"><col style="width:58px"><col style="width:84px"><col style="width:130px"><col style="width:134px"><col style="width:134px"><col style="width:134px"><col style="width:140px"><col style="width:56px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>№</th><th>Закупка</th><th>Дата</th><th>Статус</th><th class="num">Поз.</th><th class="num">К-сть</th>
+            <th class="num">Сума закупки</th><th class="num">Доставка<span class="m">план · факт</span></th><th class="num">Собівартість<span class="m">план · факт</span></th><th class="num">Очікувані продажі<span class="m">роздріб × к-сть</span></th><th></th>
+          </tr>
+        </thead>
+        <tbody id="plRows"></tbody>
+      </table>
+      <div class="empty" id="plEmpty" hidden>
+        <p id="plEmptyText">Закупок ще немає. Створіть першу: відкриється порожня таблиця, куди вводяться дані закупки.</p>
+        <button class="btn primary" id="createBtn2" type="button">+ Створити закупку</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATALOG -->
+  <div class="modal" id="catModal" hidden>
+    <div class="mbox" role="dialog" aria-modal="true" aria-labelledby="cmTitle">
+      <h2 id="cmTitle">Новий товар</h2>
+      <button class="cmphoto" id="cmPhoto" type="button" aria-label="Фото товару">+ Фото</button>
+      <input id="cmFile" type="file" accept="image/*" hidden>
+      <label class="mf"><span>Назва</span><input class="ul" id="cmName" type="text" autocomplete="off"></label>
+      <label class="mf"><span>Артикул</span><input class="ul" id="cmArt" type="text" autocomplete="off"></label>
+      <div class="mrow">
+        <label class="mf"><span>Роздрібна вартість, ₴</span><input class="ul num" id="cmPrice" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
+        <label class="mf"><span>Середня вага 1 шт, кг</span><input class="ul num" id="cmWeight" type="text" inputmode="decimal" placeholder="додамо пізніше" autocomplete="off"></label>
+      </div>
+      <div class="mact"><button class="btn" id="cmCancel" type="button">Скасувати</button><button class="btn primary" id="cmSave" type="button">Зберегти</button></div>
+    </div>
+  </div>
+  <section id="vCat" hidden aria-label="Каталог товарів">
+    <div class="bar" style="margin-bottom: 14px">
+      <label class="mf"><span>Пошук</span><input class="ul" id="catQ" type="text" placeholder="Артикул або назва" autocomplete="off"></label>
+      <button class="btn primary" id="catAdd" type="button">+ Додати товар</button>
+    </div>
+    <div class="tablewrap">
+      <table class="ft"><thead><tr><th>Фото</th><th>Артикул</th><th>Назва</th><th class="num">Роздрібна, ₴</th><th class="num">Вага 1 шт, кг</th><th></th></tr></thead><tbody id="catRows"></tbody></table>
+      <div class="empty" id="catEmpty" hidden><p>Каталог порожній. Додайте перший товар кнопкою «Додати товар».</p></div>
+    </div>
+  </section>
+
+  <!-- FINANCE (all purchases) -->
+  <section id="vFin" hidden aria-label="Фін облік">
+    <div class="bar" style="margin-bottom: 14px">
+      <label class="mf"><span>Місяць</span><select class="ul" id="fMonth"></select></label>
+    </div>
+    <div class="kpis" id="fgKpis" style="margin-bottom: 14px"></div>
+    <div class="tablewrap">
+      <table class="ft"><thead><tr><th>Дата</th><th>Закупка</th><th>Тип</th><th>Позиція</th><th>Нотатка</th><th class="num">Сума</th></tr></thead><tbody id="fgRows"></tbody></table>
+      <div class="empty" id="fgEmpty" hidden><p>За цей період записів немає. Фін записи додаються всередині закупки.</p></div>
+    </div>
+  </section>
+
+  <!-- PURCHASE -->
+  <section id="vDetail" hidden aria-label="Закупка">
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <input class="nameIn" id="mName" type="text" placeholder="Назва закупки" autocomplete="off" aria-label="Назва закупки">
+      <div class="meta">
+        <label class="mf" for="mDate"><span>Дата</span><input class="ul" id="mDate" type="date"></label>
+        <label class="mf" for="mStatus"><span>Статус</span>
+          <select class="ul" id="mStatus"><option value="planned">Планується</option><option value="transit">В дорозі</option><option value="received">Отримано</option></select>
+        </label>
+        <label class="mf" for="mCur"><span>Валюта доставки</span>
+          <select class="ul" id="mCur" style="width: 90px"><option value="$">$ долар</option><option value="€">€ євро</option><option value="₴">₴ гривня</option></select>
+        </label>
+        <label class="mf" for="mFx" id="fxBox"><span>Курс, ₴ за 1 <b class="cur">$</b></span><input class="ul rate num" id="mFx" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
+        <label class="mf" for="mRate"><span>Ставка доставки, <b class="cur">$</b>/кг</span><input class="ul rate num" id="mRate" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
+        <div class="mf auto-fin-toggle"><span>Автоматичний фін облік</span><label class="switch-row" for="mAutoFin"><input id="mAutoFin" type="checkbox"><span class="switch-ui" aria-hidden="true"></span><span class="switch-copy">Пропонувати додати суму закупки<small>Окремо для кожного товару</small></span></label></div>
+        <label class="mf" for="mNote" style="flex: 1 1 100%"><span>Коментар до закупки</span><textarea class="ul" id="mNote" rows="2" placeholder="Постачальник, умови, нагадування…" autocomplete="off"></textarea></label>
+      </div>
+
+      <section class="stats" aria-label="Підсумки закупки">
+        <div class="stat"><div class="k">Закупка</div><div class="big" id="s-buy">—</div><div class="s" id="s-buy-s">&nbsp;</div></div>
+        <div class="stat"><div class="k">Доставка · план</div><div class="big" id="s-del">—</div><div class="s" id="s-del-s">&nbsp;</div></div>
+        <div class="stat"><div class="k">Собівартість · план</div><div class="big" id="s-cost">—</div><div class="s" id="s-cost-s">&nbsp;</div></div>
+        <div class="stat" hidden><div class="k">Виручка · роздріб</div><div class="big" id="s-rev">—</div><div class="s" id="s-rev-s">&nbsp;</div></div>
+        <div class="stat"><div class="k" style="color: var(--accent)">Очікувані продажі</div><div class="big" id="s-profit">—</div><div class="s" id="s-profit-s">&nbsp;</div></div>
+      </section>
+
+      <div class="bar toolbar">
+        <div class="selbar" id="selbar" hidden>
+          <span class="selText" id="selText"></span>
+          <button class="btn" id="mergeBtn" type="button">Обʼєднати</button>
+          <button class="btn" id="unmergeBtn" type="button">Розʼєднати</button>
+          <button class="btn" id="selClear" type="button">Скасувати</button>
+        </div>
+        <span class="hint" id="mergeHint">Обʼєднання клітинок: клік по клітинці, потім Shift + клік по іншій у тому самому стовпці</span>
+        <span class="spacer"></span>
+        <div class="actions">
+          <button class="btn" id="exportBtn" type="button">Експорт CSV</button>
+          <button class="btn" id="delPBtn" type="button">Видалити закупку</button>
+          <button class="btn" id="finOpen" type="button">Фін облік</button>
+          <button class="btn primary" id="addBtn" type="button">+ Додати рядок</button>
+        </div>
+      </div>
+
+      <div class="tablewrap table-wrap">
+        <table id="grid">
+          <colgroup>
+            <col class="col-parcel" style="width:90px">
+            <col class="col-received" style="width:80px">
+            <col class="col-sku" style="width:140px">
+            <col class="col-photo" style="width:130px">
+            <col class="col-status" style="width:150px">
+            <col class="col-qty" style="width:90px">
+            <col class="col-sum" style="width:120px">
+            <col class="col-unit" style="width:120px">
+            <col class="col-weight" style="width:100px">
+            <col class="col-ttn" style="width:140px">
+            <col class="col-money" style="width:150px">
+            <col class="col-money" style="width:150px">
+            <col class="col-money" style="width:150px">
+            <col class="col-money" style="width:150px">
+            <col class="col-wparcel" style="width:150px">
+            <col class="col-wparcel" style="width:150px">
+            <col class="col-retail" style="width:140px">
+            <col class="col-comment" style="width:220px">
+            <col class="col-actions" style="width:48px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="col-parcel col-text">Посилка<span class="m">№ · обʼєднайте рядки</span></th>
+              <th class="col-received" style="text-align:center;">Отримана<span class="m"><b>✓ факт</b></span></th>
+              <th class="col-sku col-text">Артикул<span class="m"><b>ввід</b></span></th>
+              <th class="col-photo" style="text-align:center;">Фото<span class="m"><b>ввід</b></span></th>
+              <th class="col-status col-text" style="text-align:center;">Статус<span class="m"><b>ввід</b></span></th>
+              <th class="col-qty num">К-сть<span class="m"><b>ввід</b> · шт</span></th>
+              <th class="col-sum num">Сума закупки<span class="m"><b>ввід</b> · ₴</span></th>
+              <th class="col-unit num">Вартість за шт<span class="m">авто · ₴/шт</span></th>
+              <th class="col-weight num">Вага<span class="m"><b>ввід</b> · кг за всю к-сть</span></th>
+              <th class="col-ttn col-text">ТТН посилки<span class="m"><b>ввід</b></span></th>
+              <th class="col-money num">Планова вартість доставки<span class="m">авто · ₴ за позицію</span></th>
+              <th class="col-money num">Фактична вартість доставки<span class="m"><b>ввід</b> · ₴ за позицію</span></th>
+              <th class="col-money num">Планова собівартість<span class="m">авто · ₴/шт</span></th>
+              <th class="col-money num">Фактична собівартість<span class="m">авто · ₴/шт</span></th>
+              <th class="col-wparcel num">Планова вага посилки<span class="m"><b>ввід</b> · кг</span></th>
+              <th class="col-wparcel num">Фактична вага посилки<span class="m"><b>ввід</b> · кг</span></th>
+              <th class="col-retail num">Роздрібна вартість<span class="m"><b>ввід</b> · ₴/шт</span></th>
+              <th class="col-comment col-text">Коментар<span class="m"><b>ввід</b></span></th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+          <tfoot>
+            <tr>
+              <td class="lbl" colspan="2">Разом</td>
+              <td class="f-sku"></td>
+              <td class="f-photo"></td>
+              <td></td>
+              <td><div class="v" id="f-qty">—</div></td>
+              <td><div class="v" id="f-total">—</div></td>
+              <td><div class="v nil">—</div></td>
+              <td><div class="v" id="f-weight">—</div><div class="sub">кг всього</div></td>
+              <td></td>
+              <td><div class="v" id="f-planDel">—</div></td>
+              <td><div class="v" id="f-factDel">—</div></td>
+              <td><div class="v" id="f-planCost">—</div><div class="sub">× к-сть</div></td>
+              <td><div class="v" id="f-factCost">—</div><div class="sub">× к-сть</div></td>
+              <td><div class="v" id="f-pwPlan">—</div><div class="sub">кг</div></td>
+              <td><div class="v" id="f-pwFact">—</div><div class="sub">кг</div></td>
+              <td><div class="v" id="f-retail">—</div><div class="sub">× к-сть</div></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="empty" id="empty" hidden>
+          <p>У цій закупці ще немає позицій. Додайте рядок і введіть артикул, кількість, суму закупки та вагу.</p>
+          <button class="btn primary" id="emptyAdd" type="button">+ Додати рядок</button>
+        </div>
+      </div>
+
+      <div class="modal" id="finModal" hidden><div class="mbox fbox"><section class="fin" aria-label="Фін облік закупки">
+        <div class="fhead">
+          <h2>Фін облік</h2>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <span id="finSyncStatus" style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;background:var(--hover);padding:4px 10px;border-radius:20px;border:1px solid var(--line);">
+              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;"></span> Finbase (Біла карта)
+            </span>
+            <button class="btn" id="finClose" type="button">Закрити</button>
+          </div>
+        </div>
+        <div class="finform">
+          <label class="mf"><span>Дата</span><input class="ul w1" id="finDate" type="date"></label>
+          <label class="mf"><span>Тип</span><select class="ul w3" id="finKind"><option value="goods">Витрата на товар</option><option value="delivery">Витрата на доставку</option><option value="parcel">Оплата доставки за посилку</option><option value="refund">Повернення коштів</option></select></label>
+          <label class="mf" id="finParcelBox" hidden><span>Посилка №</span><select class="ul w2" id="finParcel"></select></label>
+          <label class="mf"><span>Позиція (артикул)</span><input class="ul w2" id="finArt" list="finArts" type="text" autocomplete="off" placeholder="необовʼязково"></label>
+          <label class="mf"><span>Сума, <b id="finCur">₴</b></span><input class="ul w2 num" id="finAmt" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
+          <label class="mf"><span>Нотатка</span><input class="ul w3" id="finNote" type="text" autocomplete="off" placeholder="напр. скасовано продавцем"></label>
+          <button class="btn primary" id="finAdd" type="button">+ Додати запис</button>
+          <datalist id="finArts"></datalist>
+        </div>
+        <div class="kpis" id="finKpis"></div>
+        <div class="tablewrap">
+          <table class="ft"><thead><tr><th>Дата</th><th>Тип</th><th>Позиція</th><th>Нотатка</th><th class="num">Сума</th><th></th></tr></thead><tbody id="finRows"></tbody></table>
+          <div class="empty" id="finEmpty"><p>Записів ще немає. Додайте витрату на товар чи доставку, а у разі скасування позиції відмітьте повернення коштів.</p></div>
+        </div>
+      </section></div></div>
+
+      <div class="modal" id="autoFinModal" hidden>
+        <div class="mbox" role="dialog" aria-modal="true" aria-labelledby="autoFinTitle" aria-describedby="autoFinText">
+          <h2 id="autoFinTitle">Додати у фін облік?</h2>
+          <p id="autoFinText" style="margin:0;color:var(--muted);font-size:15px;line-height:1.5"></p>
+          <div class="mact"><button class="btn" id="autoFinNo" type="button">Ні</button><button class="btn primary" id="autoFinYes" type="button">Додати витрату</button></div>
+        </div>
+      </div>
+
+      <section class="notes" aria-label="Формули">
+        <div><b>Вартість за шт</b> = Сума закупки ÷ К-сть</div>
+        <div><b>Планова доставка</b> = Загальна вага рядка × Ставка (у ₴)</div>
+        <div><b>Планова собівартість</b> = Вартість за шт + Планова доставка ÷ К-сть</div>
+        <div><b>Фактична собівартість</b> = Вартість за шт + Фактична доставка ÷ К-сть</div>
+        <div><b>Маржа</b> = (Роздріб − Собівартість) ÷ Роздріб. Береться фактична собівартість, а якщо її немає, планова.</div>
+        <div>Фактична доставка та планова доставка вказуються у гривнях (₴). Вага вводиться загалом за всю кількість товару в рядку.</div>
+        <div><b>Обʼєднані клітинки</b>: сума закупки, планова та фактична доставка діляться між рядками групи (доставка за вагою × к-сть), решта значень діють для всіх рядків групи.</div>
+      </section>
+    </div>
+  </section>
+<!-- FIREBASE MODAL -->
+<div class="modal" id="fbModal" hidden>
+  <div class="mbox" role="dialog" aria-modal="true" aria-labelledby="fbTitle" style="max-width: 600px; width: 100%;">
+    <div class="fhead">
+      <h2 id="fbTitle" style="display:flex;align-items:center;gap:8px">🔥 База даних Firebase</h2>
+      <button class="btn" id="fbClose" type="button">Закрити</button>
+    </div>
+    <p style="margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5;">
+      Підключіть Firebase Firestore для синхронізації та збереження всіх закупок, товарів каталогу та фінансових записів у реальному часі.
+    </p>
+
+    <div id="fbStatusBadge" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border:1px solid var(--line);background:var(--hover);border-radius:8px;font-size:13px;font-weight:600;">
+      <span id="fbStatusBadgeText">Перевірка...</span>
+      <span id="fbProjectBadge" style="color:var(--accent);font-family:monospace;font-size:12px;"></span>
+    </div>
+
+    <label class="mf">
+      <span>Конфігурація Firebase (вставте обʼєкт <code>firebaseConfig</code> або JSON):</span>
+      <textarea class="ul" id="fbConfigInput" rows="7" placeholder='const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "your-project.firebaseapp.com",
+  projectId: "your-project",
+  storageBucket: "your-project.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef..."
+};' style="font-family: monospace; font-size: 12px; line-height: 1.4; padding: 10px;"></textarea>
+    </label>
+
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <button class="btn primary" id="fbSaveBtn" type="button">Зберегти та підключити</button>
+      <button class="btn" id="fbSyncBtn" type="button" title="Перенести закупки й каталог з памʼяті цього браузера у Firebase">⬆ Перенести локальні дані в хмару</button>
+      <button class="btn" id="fbDisconnectBtn" type="button">Відключити</button>
+    </div>
+
+    <details style="font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.6;">
+      <summary style="cursor: pointer; font-weight: 700; color: var(--fg); margin-bottom: 8px;">📖 Як створити базу Firebase за 2 хвилини?</summary>
+      <ol style="margin: 0; padding-left: 20px;">
+        <li>Відкрийте <a href="https://console.firebase.google.com/" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">Firebase Console</a> та створіть новий проект (або відкрийте існуючий).</li>
+        <li>У лівому меню виберіть <b>Build &rarr; Firestore Database</b> і натисніть <b>Create database</b>.</li>
+        <li>У вкладці <b>Rules (Правила)</b> дозвольте доступ на читання й запис:
+          <pre style="background:var(--calc);padding:6px 10px;border-radius:4px;margin:6px 0;font-size:11px;overflow-x:auto;">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+        </li>
+        <li>Відкрийте <b>Project Settings (шестерня) &rarr; General</b>, у розділі <b>Your apps</b> натисніть <b>&lt;/&gt; (Web)</b>.</li>
+        <li>Скопіюйте обʼєкт <code>firebaseConfig</code> і вставте у поле вище.</li>
+      </ol>
+    </details>
+  </div>
+</div>
+
+<div class="lb" id="lb" hidden>
+  <img id="lbImg" alt="Фото позиції">
+  <div class="cap" id="lbCap"></div>
+  <div class="row">
+    <button class="btn" id="lbReplace" type="button">Замінити</button>
+    <button class="btn" id="lbRemove" type="button">Видалити фото</button>
+    <button class="btn primary" id="lbClose" type="button">Закрити</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var KEY = 'zakupky-swiss.v2';
+  var CFG_KEY = 'zakupky-firebase-config';
+  // =========================================================================
+  // НАЛАШТУВАННЯ FIREBASE:
+  // Ви можете вставити конфігурацію сюди АБО в інтерфейсі (кнопка «🔥 Firebase»)
+  // =========================================================================
+  var DEFAULT_FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBIzjRAFoUHJq4O8sRiROKBXWJYr-CcViw",
+    authDomain: "zakupka-latiao.firebaseapp.com",
+    databaseURL: "https://zakupka-latiao-default-rtdb.firebaseio.com",
+    projectId: "zakupka-latiao",
+    storageBucket: "zakupka-latiao.firebasestorage.app",
+    messagingSenderId: "451581472261",
+    appId: "1:451581472261:web:90756d983ad0d77dbe366c"
+  };
+
+  var STATUS_LABEL = { planned: 'Планується', transit: 'В дорозі', received: 'Отримано' };
+  var STATUS_NEXT = { planned: 'transit', transit: 'received', received: 'planned' };
+  var $ = function (s) { return document.querySelector(s); };
+  var tbody = $('#rows');
+
+  var state = { cat: new Map(), purchases: new Map(), view: 'list', pid: null, rows: new Map(), filter: '', pfilter: '', eff: new Map(), lay: null };
+  var refs = new Map();
+  var timers = {};
+  var chain = {};
+  var inflight = 0;
+  var mode = 'connecting';
+  var loaded = false;
+  var itemsLoaded = false;
+  var db = null, downloads = null, unsubItems = null;
+  var localItems = {};
+  var seq = 0;
+  var lbId = null;
+
+  /* ---------- helpers ---------- */
+  var nf, nf1;
+  try { nf = new Intl.NumberFormat('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (e) { nf = null; }
+  try { nf1 = new Intl.NumberFormat('uk-UA', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); } catch (e) { nf1 = null; }
+  function fmt(n) { return nf ? nf.format(n) : n.toFixed(2); }
+  function fmt1(n) { return nf1 ? nf1.format(n) : n.toFixed(1); }
+  function num(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+    var s = String(v).replace(/[\s ]/g, '').replace(',', '.');
+    if (s === '' || s === '-' || s === '.') return null;
+    var n = Number(s);
+    return isFinite(n) ? n : null;
+  }
+  function show(v) { return v == null ? '' : String(v).replace('.', ','); }
+  function sgn(d) { return d > 0 ? '+' : d < 0 ? '−' : '±'; }
+  function r2(n) { return Math.round(n * 100) / 100; }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function fmtDate(s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? m[3] + '.' + m[2] + '.' + m[1] : '—'; }
+  function money(n, c) { return fmt(n) + ' ' + c; }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function M() { return state.purchases.get(state.pid); }
+  function cur() { var m = M(); return (m && m.cur) || '$'; }
+  function fx() { var m = M(); if (!m) return null; return m.cur === '₴' ? 1 : num(m.fx); }
+  function rate() { var m = M(); return m ? num(m.rate) : null; }
+  var KIND = { goods: 'Товар', delivery: 'Доставка', refund: 'Повернення' };
+  var MONTHS = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+  function cleanFin(a) {
+    return Array.isArray(a) ? a.map(function (x) { return { id: String(x.id || uid()), d: x.d || '', k: KIND[x.k] ? x.k : 'goods', a: num(x.a) || 0, art: x.art || '', n: x.n || '', pc: num(x.pc) || 0, rid: x.rid || '', ext: !!x.ext }; }) : [];
+  }
+  function normMeta(d) {
+    return {
+      name: d.name || '', date: d.date || '', status: STATUS_LABEL[d.status] ? d.status : 'planned',
+      cur: d.cur || '$', rate: num(d.rate), ts: Number(d.ts) || Date.now() * 1000, ex: !!d.ex, sum: d.sum || null, fin: cleanFin(d.fin), fx: num(d.fx), note: d.note || '', autoFin: d.autoFin !== false
+    };
+  }
+  function itemsPath(pid) { return 'purchases/' + pid + '/items'; }
+
+  /* ---------- status ---------- */
+  var statusBase = { k: 'connecting', t: 'підключення…' };
+  function paintStatus(k, t) { $('#status').setAttribute('data-k', k); $('#statusText').textContent = t; }
+  function setStatus(k, t) {
+    var defaultText = {
+      connecting: 'підключення…',
+      saving: mode === 'db' ? 'Firebase: збереження…' : 'збереження…',
+      saved: mode === 'db' ? 'Firebase: збережено' : 'збережено',
+      local: 'локальний режим',
+      error: 'не збережено'
+    }[k];
+    var txt = t || defaultText;
+    statusBase = { k: k, t: txt };
+    paintStatus(k, txt);
+  }
+  function flash(t) {
+    paintStatus('saving', t);
+    setTimeout(function () { paintStatus(statusBase.k, statusBase.t); }, 2600);
+  }
+  function errText(e) {
+    var c = (e && e.code) ? String(e.code) : '';
+    var msg = (e && e.message) ? String(e.message) : '';
+    if (c.indexOf('permission-denied') !== -1 || c === 'invalid_argument') return 'немає прав на запис (налаштуйте правила Firestore)';
+    if (c.indexOf('quota-exceeded') !== -1 || c === 'quota_exceeded' || c.indexOf('resource-exhausted') !== -1) return 'перевищено квоту Firebase';
+    if (c.indexOf('unavailable') !== -1) return 'немає звʼязку з Firebase';
+    if (c === 'revoked') return 'доступ закрито';
+    if (msg) return 'помилка: ' + msg.slice(0, 36);
+    return 'помилка збереження';
+  }
+
+  /* ---------- calculations ---------- */
+  var OVK = ['unit', 'planDel', 'planCost', 'factCost'];
+  function cleanOv(o) {
+    if (!o) return null;
+    var r = {}, any = false;
+    OVK.concat(['pwPlan']).forEach(function (k) { var n = num(o[k]); if (n != null) { r[k] = n; any = true; } });
+    return any ? r : null;
+  }
+  function calcId(id) {
+    var e = state.eff.get(id) || {};
+    var q = num(e.qty), t = num(e.total), w = num(e.weight), df = num(e.delFact), rt = num(e.retail);
+    var rate0 = rate();
+    var f0 = fx();
+    var rateUah = (rate0 != null && f0 != null) ? rate0 * f0 : null;
+    var hasQ = q != null && q > 0;
+    var ov = (state.rows.get(id) || {}).ov || {};
+    var unit = ov.unit != null ? ov.unit : (hasQ && t != null ? t / q : null);
+    var planDel = (e.planDel != null) ? e.planDel : (ov.planDel != null ? ov.planDel : (w != null && rateUah != null ? w * rateUah : null));
+    var delPerUnit = (planDel != null && hasQ) ? (planDel / q) : (w != null && rateUah != null && hasQ ? w * rateUah / q : null);
+    var planCost = (e.planCost != null) ? e.planCost : (ov.planCost != null ? ov.planCost : (unit != null && delPerUnit != null ? unit + delPerUnit : null));
+    var factCost = ov.factCost != null ? ov.factCost : (unit != null && df != null && hasQ ? unit + df / q : null);
+    var eff = factCost != null ? factCost : planCost;
+    return { ov: ov, q: q, t: t, w: w, df: df, rt: rt, unit: unit, planDel: planDel, planCost: planCost, factCost: factCost, eff: eff, effKind: factCost != null ? 'ф' : 'п' };
+  }
+
+  /* ---------- persistence ---------- */
+  function payload(r) {
+    return { art: r.art || '', photo: r.photo || '', status: r.status || 'Замовлено', qty: num(r.qty), total: num(r.total), weight: num(r.weight), delFact: num(r.delFact), retail: num(r.retail), ts: r.ts, mg: cleanMg(r.mg), ov: cleanOv(r.ov), note: r.note || '', ttn: r.ttn || '', pwf: num(r.pwf), rcv: !!r.rcv };
+  }
+  function metaPayload(m) {
+    return { name: m.name || '', date: m.date || '', status: STATUS_LABEL[m.status] ? m.status : 'planned', cur: m.cur || '$', rate: num(m.rate), ts: m.ts, ex: !!m.ex, sum: m.sum || null, fin: cleanFin(m.fin), fx: num(m.fx), note: m.note || '', autoFin: m.autoFin !== false };
+  }
+  function saveLocal() {
+    if (state.pid) {
+      var items = {};
+      state.rows.forEach(function (r, id) { items[id] = payload(r); });
+      localItems[state.pid] = items;
+    }
+    var ps = {};
+    state.purchases.forEach(function (m, id) { ps[id] = metaPayload(m); });
+    var cs = {}; state.cat.forEach(function (c, id) { cs[id] = catPayload(c); });
+    localStorage.setItem(KEY, JSON.stringify({ purchases: ps, items: localItems, catalog: cs }));
+  }
+  function localSave() {
+    try { saveLocal(); setStatus('local'); } catch (e) { setStatus('error', 'браузер не дозволив зберегти'); }
+  }
+  function track(p) {
+    inflight++;
+    setStatus('saving');
+    return p.then(function () {
+      inflight--;
+      if (!inflight) setStatus(mode === 'db' ? 'saved' : 'local');
+    }).catch(function (err) {
+      inflight--;
+      setStatus('error', errText(err));
+    });
+  }
+  function flushItem(pid, id) {
+    var k = 'i:' + id;
+    if (timers[k]) { clearTimeout(timers[k]); delete timers[k]; }
+    var r = state.rows.get(id);
+    if (!r) return;
+    if (mode === 'local') { localSave(); return; }
+    var data = payload(r);
+    chain[k] = track((chain[k] || Promise.resolve()).then(function () { return db.collection(itemsPath(pid)).doc(id).set(data); }));
+  }
+  function scheduleItem(id) {
+    var k = 'i:' + id;
+    if (timers[k]) clearTimeout(timers[k]);
+    var pid = state.pid;
+    timers[k] = setTimeout(function () { flushItem(pid, id); }, 600);
+  }
+  function flushMeta(pid) {
+    var k = 'm:' + pid;
+    if (timers[k]) { clearTimeout(timers[k]); delete timers[k]; }
+    var m = state.purchases.get(pid);
+    if (!m) return;
+    if (mode === 'local') { localSave(); return; }
+    var data = metaPayload(m);
+    chain[k] = track((chain[k] || Promise.resolve()).then(function () { return db.collection('purchases').doc(pid).set(data); }));
+  }
+  function scheduleMeta(pid, delay) {
+    var k = 'm:' + pid;
+    if (timers[k]) clearTimeout(timers[k]);
+    timers[k] = setTimeout(function () { flushMeta(pid); }, delay || 500);
+  }
+  function flushAll() {
+    Object.keys(timers).forEach(function (k) {
+      if (k.charAt(0) === 'i') flushItem(state.pid, k.slice(2)); else flushMeta(k.slice(2));
+    });
+  }
+
+  /* ---------- purchases list ---------- */
+  function lastRate() {
+    var best = null;
+    state.purchases.forEach(function (m) { if (m.rate != null && (!best || m.ts > best.ts)) best = m; });
+    return best ? best.rate : null;
+  }
+  function numCell(tr, main, sub, subKind, mainColor) {
+    var td = document.createElement('td');
+    td.className = 'num';
+    var v = el('div', 'v' + (main == null ? ' nil' : ''), main == null ? '—' : main);
+    if (mainColor) v.style.color = mainColor;
+    td.appendChild(v);
+    var s = el('div', 'sub' + (subKind ? ' ' + subKind : ''), sub || '');
+    td.appendChild(s);
+    tr.appendChild(td);
+  }
+  function buildListRow(id, m, idx) {
+    var tr = document.createElement('tr');
+    tr.className = 'plrow';
+    tr.dataset.id = id;
+    var c = m.cur || '$', s = m.sum;
+    var td = el('td', 'idx', String(idx)); tr.appendChild(td);
+    td = el('td', 'pname');
+    var b = el('button', 'open', m.name || 'Без назви'); b.type = 'button'; b.setAttribute('data-act', 'open');
+    td.appendChild(b);
+    if (m.ex) td.appendChild(el('span', 'tag', 'приклад'));
+    tr.appendChild(td);
+    tr.appendChild(el('td', '', fmtDate(m.date)));
+    td = document.createElement('td');
+    var sb = el('button', 'st st-' + m.status); sb.type = 'button'; sb.setAttribute('data-act', 'cyc'); sb.title = 'Натисніть, щоб змінити статус';
+    sb.appendChild(el('i'));
+    sb.appendChild(document.createTextNode(STATUS_LABEL[m.status]));
+    td.appendChild(sb); tr.appendChild(td);
+    var has = s && s.n > 0;
+    td = el('td', 'num', s ? String(s.n) : '—'); tr.appendChild(td);
+    td = el('td', 'num', has ? fmt(s.qty).replace(/[,.]00$/, '') : '—'); tr.appendChild(td);
+    numCell(tr, has ? money(s.buy, '₴') : null, '');
+    numCell(tr, has ? money(s.pd, '₴') : null, has ? 'факт ' + (s.fn ? money(s.fd, '₴') : '—') : '');
+    numCell(tr, has ? money(s.pc, '₴') : null, has ? 'факт ' + (s.fn ? money(s.fc, '₴') : '—') : '');
+    numCell(tr, has && s.rev > 0 ? money(s.rev, '₴') : null, has && s.rev > 0 ? 'роздрібна × к-сть' : '', 'good', 'var(--good)');
+    td = el('td', 'act');
+    var d = el('button', 'del', '×'); d.type = 'button'; d.setAttribute('data-act', 'pdel'); d.setAttribute('aria-label', 'Видалити закупку');
+    td.appendChild(d); tr.appendChild(td);
+    return tr;
+  }
+  function renderList() {
+    var box = $('#plRows');
+    box.textContent = '';
+    var f = state.pfilter.trim().toLowerCase();
+    var arr = Array.from(state.purchases.entries()).sort(function (a, b) { return b[1].ts - a[1].ts; });
+    var n = 0;
+    arr.forEach(function (e) {
+      if (f && (e[1].name || '').toLowerCase().indexOf(f) === -1) return;
+      n++;
+      box.appendChild(buildListRow(e[0], e[1], n));
+    });
+    var empty = $('#plEmpty');
+    if (!loaded) { empty.hidden = false; $('#plEmptyText').textContent = 'Завантаження списку…'; $('#createBtn2').hidden = true; return; }
+    $('#createBtn2').hidden = state.purchases.size !== 0;
+    empty.hidden = n !== 0;
+    $('#plEmptyText').textContent = state.purchases.size === 0
+      ? 'Закупок ще немає. Створіть першу: відкриється порожня таблиця, куди вводяться дані закупки.'
+      : 'За цим запитом закупок не знайдено.';
+  }
+  function createPurchase() {
+    var id = mode === 'db' ? db.collection('purchases').doc().id : uid();
+    var m = { name: 'Нова закупка', date: today(), status: 'planned', cur: '$', rate: lastRate(), ts: Date.now() * 1000 + (seq++ % 1000), ex: false, sum: null, autoFin: true };
+    state.purchases.set(id, m);
+    flushMeta(id);
+    openPurchase(id, true);
+  }
+  function deletePurchase(id) {
+    state.purchases.delete(id);
+    ['m:' + id].forEach(function (k) { if (timers[k]) { clearTimeout(timers[k]); delete timers[k]; } });
+    if (mode === 'local') { delete localItems[id]; localSave(); renderList(); return; }
+    renderList();
+    var ic = db.collection(itemsPath(id));
+    track(ic.get().then(function (snap) {
+      var p = Promise.resolve();
+      snap.docs.forEach(function (d) { p = p.then(function () { return ic.doc(d.id).delete(); }); });
+      return p;
+    }).then(function () { return db.collection('purchases').doc(id).delete(); }));
+  }
+  function cycleStatus(id) {
+    var m = state.purchases.get(id);
+    if (!m) return;
+    m.status = STATUS_NEXT[m.status] || 'planned';
+    flushMeta(id);
+    renderList();
+  }
+
+  /* ---------- purchase screen ---------- */
+  /* ---------- catalog ---------- */
+  var catEdit = null, catPhoto = '';
+  function normCat(d, id) { return { id: id, art: String(d.art || ''), name: String(d.name || ''), photo: d.photo || '', price: num(d.price), weight: num(d.weight), ts: Number(d.ts) || Date.now() }; }
+  function catPayload(c) { return { art: c.art, name: c.name, photo: c.photo || '', price: c.price == null ? null : c.price, weight: c.weight == null ? null : c.weight, ts: c.ts }; }
+  function catFind(a) {
+    a = (a || '').trim().toLowerCase();
+    if (!a) return null;
+    var f = null;
+    state.cat.forEach(function (c) { if (!f && c.art.trim().toLowerCase() === a) f = c; });
+    return f;
+  }
+  function flushCat(id) {
+    if (mode === 'local') { localSave(); return; }
+    var c = state.cat.get(id); if (!c) return;
+    var k = 'c:' + id, d = catPayload(c);
+    chain[k] = track((chain[k] || Promise.resolve()).then(function () { return db.collection('catalog').doc(id).set(d); }));
+  }
+  function delCat(id) {
+    state.cat.delete(id);
+    if (mode === 'local') localSave(); else track(db.collection('catalog').doc(id).delete());
+    renderCat();
+  }
+  function renderCat() {
+    var q = ($('#catQ').value || '').trim().toLowerCase(), body = $('#catRows'), list = [];
+    body.textContent = '';
+    state.cat.forEach(function (c) { if (!q || (c.art + ' ' + c.name).toLowerCase().indexOf(q) !== -1) list.push(c); });
+    list.sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
+    list.forEach(function (c) {
+      var tr = document.createElement('tr'), td = el('td'), th = el('div', 'cthumb');
+      if (c.photo) { var im = document.createElement('img'); im.alt = ''; im.src = c.photo; th.appendChild(im); }
+      td.appendChild(th); tr.appendChild(td);
+      tr.appendChild(el('td', '', c.art || '—')); tr.appendChild(el('td', '', c.name || '—'));
+      tr.appendChild(el('td', 'num', c.price == null ? '—' : money(c.price, '₴')));
+      tr.appendChild(el('td', 'num', c.weight == null ? '—' : fmt(c.weight)));
+      var ta = el('td', 'act'), eb = el('button', 'btn x', 'Змінити'), db2 = el('button', 'btn x', '×');
+      eb.type = db2.type = 'button'; db2.title = 'Видалити товар';
+      eb.addEventListener('click', function () { openCatModal(c.id); });
+      db2.addEventListener('click', function () { confirmTap(db2, 'Так?', function () { delCat(c.id); }); });
+      ta.appendChild(eb); ta.appendChild(document.createTextNode(' ')); ta.appendChild(db2); tr.appendChild(ta);
+      body.appendChild(tr);
+    });
+    $('#catEmpty').hidden = list.length > 0;
+  }
+  function paintCmPhoto() {
+    var b = $('#cmPhoto'); b.textContent = '';
+    if (catPhoto) { var im = document.createElement('img'); im.alt = ''; im.src = catPhoto; b.appendChild(im); } else b.textContent = '+ Фото';
+  }
+  function openCatModal(id) {
+    catEdit = id || null;
+    var c = (id && state.cat.get(id)) || {};
+    $('#cmTitle').textContent = id ? 'Редагувати товар' : 'Новий товар';
+    $('#cmName').value = c.name || ''; $('#cmArt').value = c.art || '';
+    $('#cmPrice').value = c.price == null ? '' : show(c.price); $('#cmWeight').value = c.weight == null ? '' : show(c.weight);
+    catPhoto = c.photo || ''; paintCmPhoto();
+    $('#catModal').hidden = false; $('#cmArt').focus();
+  }
+  function closeCatModal() { $('#catModal').hidden = true; }
+  function saveCat() {
+    var art = $('#cmArt').value.trim();
+    if (!art) { flash('Вкажіть артикул'); $('#cmArt').focus(); return; }
+    var dup = catFind(art);
+    if (dup && dup.id !== catEdit) { flash('Такий артикул уже є в каталозі'); return; }
+    var id = catEdit || (mode === 'db' ? db.collection('catalog').doc().id : uid()), old = state.cat.get(id) || {};
+    state.cat.set(id, { id: id, art: art, name: $('#cmName').value.trim(), photo: catPhoto, price: num($('#cmPrice').value), weight: num($('#cmWeight').value), ts: old.ts || Date.now() });
+    flushCat(id); closeCatModal(); renderCat();
+  }
+  function showCat() {
+    state.view = 'cat';
+    $('#vList').hidden = true; $('#vCat').hidden = false;
+    setTop(); renderCat();
+  }
+  function syncRowToCatalog(id, notify) {
+    var r = state.rows.get(id);
+    if (!r) return null;
+    var art = (r.art || '').trim();
+    if (!art) return null;
+
+    var existing = catFind(art);
+    var photo = r.photo || (existing && existing.photo) || '';
+    var price = r.retail != null ? r.retail : (existing ? existing.price : null);
+    var rowQty = num(r.qty);
+    var unitWeight = r.weight != null && rowQty > 0 ? r.weight / rowQty : null;
+    var weight = unitWeight != null ? unitWeight : (existing ? existing.weight : null);
+
+    if (existing) {
+      var changed = false;
+      if (r.photo && r.photo !== existing.photo) { existing.photo = r.photo; changed = true; }
+      if (r.retail != null && r.retail !== existing.price) { existing.price = r.retail; changed = true; }
+      if (unitWeight != null && unitWeight !== existing.weight) { existing.weight = unitWeight; changed = true; }
+      if (changed) {
+        flushCat(existing.id);
+        if (state.view === 'cat') renderCat();
+        if (notify) flash('Оновлено в каталозі: ' + (existing.name || existing.art));
+      }
+      return existing;
+    }
+
+    if (!photo && price == null && weight == null) return null;
+
+    var catId = mode === 'db' ? db.collection('catalog').doc().id : uid();
+    var newCat = {
+      id: catId,
+      art: art,
+      name: art,
+      photo: photo,
+      price: price,
+      weight: weight,
+      ts: Date.now()
+    };
+    state.cat.set(catId, newCat);
+    flushCat(catId);
+    if (state.view === 'cat') renderCat();
+    if (notify) flash('Товар збережено в каталог: ' + art);
+    return newCat;
+  }
+
+  function autofillRow(id) {
+    var r = state.rows.get(id);
+    if (!r) return;
+    var art = (r.art || '').trim();
+    if (!art) return;
+    var c = catFind(art);
+    if (c) {
+      var changed = false;
+      if (c.photo && r.photo !== c.photo) {
+        r.photo = c.photo;
+        setThumb(id);
+        changed = true;
+      }
+      if (c.price != null && r.retail !== c.price) {
+        r.retail = c.price;
+        changed = true;
+      }
+      var q = num(r.qty);
+      if (c.weight != null && q > 0 && (r.weight == null || r.weight === 0) && r.weight !== c.weight * q) {
+        r.weight = c.weight * q;
+        changed = true;
+      }
+      if (changed) {
+        fillInputs(id);
+        recomputeAll();
+        flushItem(state.pid, id);
+      }
+      flash('Підтягнуто з каталогу: ' + (c.name || c.art));
+    } else {
+      if (r.photo || r.retail != null || r.weight != null) {
+        syncRowToCatalog(id, true);
+      }
+    }
+  }
+  function setTop() {
+    $('#h1').hidden = state.view === 'detail';
+    $('#h1').textContent = state.view === 'fin' ? 'Фін облік' : state.view === 'cat' ? 'Каталог товарів' : 'Закупки';
+    $('#back').hidden = state.view === 'list';
+  }
+  /* ---------- finance ---------- */
+  function sumFin(list) {
+    var t = { goods: 0, delivery: 0, refund: 0, net: 0 };
+    list.forEach(function (x) { t[x.e.k] += x.e.a; });
+    t.net = t.goods + t.delivery - t.refund;
+    return t;
+  }
+  function kpi(box, label, val, cls) {
+    var d = el('div', 'kpi'); d.appendChild(el('span', '', label)); d.appendChild(el('b', cls || '', val)); box.appendChild(d);
+  }
+  function finRow(e) {
+    var tr = document.createElement('tr');
+    tr.appendChild(el('td', '', fmtDate(e.d)));
+    tr.appendChild(el('td', '', e.k === 'delivery' && e.pc ? 'Доставка · посилка ' + e.pc : KIND[e.k]));
+    return tr;
+  }
+  function amtCell(tr, e, c) {
+    tr.appendChild(el('td', 'num' + (e.k === 'refund' ? ' good' : ''), (e.k === 'refund' ? '+ ' : '') + money(e.a, c || '₴')));
+  }
+  function byDate(a, b) { return (b.d || '') < (a.d || '') ? -1 : (b.d || '') > (a.d || '') ? 1 : 0; }
+  function renderFin() {
+    var m = M();
+    if (!m) return;
+    var list = (m.fin || []).slice().sort(byDate), body = $('#finRows'), t = sumFin(list.map(function (e) { return { e: e, m: m }; }));
+    var fk = $('#finKind').value;
+    $('#finCur').textContent = '₴';
+    $('#finParcelBox').hidden = fk !== 'parcel';
+    var ps = $('#finParcel'), keep = ps.value, P = parcelCount();
+    ps.textContent = '';
+    for (var pi = 1; pi <= P; pi++) { var po = document.createElement('option'); po.value = pi; po.textContent = 'Посилка ' + pi; ps.appendChild(po); }
+    if (keep && +keep <= P) ps.value = keep;
+    var dl = $('#finArts'); dl.textContent = '';
+    state.rows.forEach(function (r) { if (r.art) { var o = document.createElement('option'); o.value = r.art; dl.appendChild(o); } });
+    body.textContent = '';
+    list.forEach(function (e) {
+      var tr = finRow(e);
+      tr.appendChild(el('td', '', e.art || '—'));
+      tr.appendChild(el('td', '', e.n || '—'));
+      amtCell(tr, e, '₴');
+      var td = el('td', 'act'), b = el('button', 'btn x', '×');
+      b.type = 'button'; b.title = 'Видалити запис';
+      b.addEventListener('click', function () {
+        confirmTap(b, 'Так?', function () {
+          m.fin = m.fin.filter(function (x) { return x.id !== e.id; });
+          flushMeta(state.pid); renderFin();
+          syncFinToExternal(e, m, true);
+        });
+      });
+      td.appendChild(b); tr.appendChild(td); body.appendChild(tr);
+    });
+    $('#finEmpty').hidden = list.length > 0;
+    var k = $('#finKpis'); k.textContent = '';
+    kpi(k, 'Товари', money(t.goods, '₴')); kpi(k, 'Доставка', money(t.delivery, '₴'));
+    kpi(k, 'Повернено', money(t.refund, '₴'), 'good'); kpi(k, 'Чисті витрати', money(t.net, '₴'));
+  }
+
+  /* ---------- External Finbase sync (Біла карта) ---------- */
+  var FIN_OBLIK_CONFIG = window.FIREBASE_CONFIG || {
+    apiKey: 'AIzaSyDL-6CK_gKRPh05_PH_V9_bu7Lx5wNS7Co',
+    authDomain: 'fin-oblik.firebaseapp.com',
+    databaseURL: 'https://fin-oblik-default-rtdb.europe-west1.firebasedatabase.app',
+    projectId: 'fin-oblik',
+    storageBucket: 'fin-oblik.firebasestorage.app',
+    messagingSenderId: '240036688794',
+    appId: '1:240036688794:web:5b5052009ae06cb6c94023'
+  };
+  var FIN_OBLIK_URL = FIN_OBLIK_CONFIG.databaseURL + '/accounting/fin-oblik-state';
+
+  function formatFinDate(isoDate) {
+    var parts = (isoDate || today()).split('-');
+    var now = new Date();
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), now.getHours(), now.getMinutes());
+    var shown = d.toLocaleDateString('uk-UA', { day: '2-digit', month: 'short', year: 'numeric' }).replace(' р.', '');
+    var timeStr = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+    return shown + ', ' + timeStr;
+  }
+
+  function getPurchaseArticles(m) {
+    var arts = [];
+    state.rows.forEach(function (r) {
+      if (r.art && r.art.trim() && arts.indexOf(r.art.trim()) === -1) {
+        arts.push(r.art.trim());
+      }
+    });
+    if (arts.length) return arts.join(', ');
+    return (m && m.name) ? m.name.trim() : 'Товар';
+  }
+
+  function combineDesc(oldDesc, newArt, newNote) {
+    var parts = (oldDesc || '').split(' · ');
+    var mainPart = parts[0] || oldDesc || '';
+    var existingNotes = parts.slice(1);
+    if (newArt && mainPart.indexOf(newArt) === -1) {
+      mainPart += (mainPart ? ', ' : '') + newArt;
+    }
+    if (newNote && existingNotes.indexOf(newNote) === -1) {
+      existingNotes.push(newNote);
+    }
+    return existingNotes.length ? mainPart + ' · ' + existingNotes.join(', ') : mainPart;
+  }
+
+  function syncFinToExternal(entry, m, isDelete) {
+    if (!entry) return Promise.resolve();
+    var isoDate = entry.d || today();
+    var valUah = Math.round((entry.a || 0) * 100) / 100;
+
+    var isRefund = entry.k === 'refund';
+    var isDel = entry.k === 'delivery';
+    var cat = isRefund ? 'Повернення грошей за товар (закупка)' : (isDel ? 'Доставка міжнародна' : 'Закупка');
+    var catColor = isRefund ? '#4775c5' : (isDel ? '#428ec4' : '#d17b32');
+    var type = isRefund ? 'refund' : 'expense';
+
+    var artStr = (entry.art && entry.art.trim()) ? entry.art.trim() : getPurchaseArticles(m);
+    var noteStr = entry.n ? entry.n.trim() : '';
+
+    var statusEl = $('#finSyncStatus');
+    if (statusEl) {
+      statusEl.innerHTML = '<span style=\"display:inline-block;width:7px;height:7px;border-radius:50%;background:#e2a63d;\"></span> Синхронізація...';
+    }
+
+    return fetch(FIN_OBLIK_URL + '.json')
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        data = data || {};
+        var txList = Array.isArray(data.transactions) ? data.transactions : [];
+        var journal = Array.isArray(data.journal) ? data.journal : [];
+
+        if (isDelete) {
+          var target = null;
+          for (var i = 0; i < txList.length; i++) {
+            var t = txList[i];
+            if (t.isoDate === isoDate && t.account === 'Біла карта' && t.cat === cat && t.type === type && !t.isDeleted && t.source === 'zakupka-latiao') {
+              target = t;
+              break;
+            }
+          }
+          if (target) {
+            target.value = Math.max(0, Math.round((target.value - valUah) * 100) / 100);
+            if (target.value <= 0) {
+              target.isDeleted = true;
+              target.status = 'Скасовано';
+              target.amount = (type === 'expense' ? '− ' : '+ ') + '0,00';
+            } else {
+              target.amount = (type === 'expense' ? '− ' : '+ ') + fmt(target.value);
+            }
+            journal.unshift({
+              at: new Date().toISOString(),
+              user: 'Закупка Латяо',
+              action: 'Скасовано / змінено операцію',
+              details: cat + ', ₴ ' + fmt(valUah)
+            });
+          }
+        } else {
+          var existing = null;
+          for (var j = 0; j < txList.length; j++) {
+            var ex = txList[j];
+            if (ex.isoDate === isoDate && ex.account === 'Біла карта' && ex.cat === cat && ex.type === type && !ex.isDeleted && ex.source === 'zakupka-latiao') {
+              existing = ex;
+              break;
+            }
+          }
+
+          if (existing) {
+            existing.value = Math.round((existing.value + valUah) * 100) / 100;
+            existing.amount = (type === 'expense' ? '− ' : '+ ') + fmt(existing.value);
+            existing.date = formatFinDate(isoDate);
+            existing.desc = combineDesc(existing.desc, artStr, noteStr);
+          } else {
+            var prefix = isRefund ? 'Повернення коштів' : (isDel ? 'Оплата доставки' : 'Оплата товару');
+            var desc = prefix + ': ' + artStr;
+            if (entry.pc && isDel) desc += ' (посилка ' + entry.pc + ')';
+            if (noteStr) desc += ' · ' + noteStr;
+
+            var newTx = {
+              id: Date.now(),
+              isoDate: isoDate,
+              date: formatFinDate(isoDate),
+              value: valUah,
+              status: 'Проведено',
+              party: '—',
+              type: type,
+              cat: cat,
+              color: catColor,
+              account: 'Біла карта',
+              acc: '#8d99a3',
+              desc: desc,
+              amount: (type === 'expense' ? '− ' : '+ ') + fmt(valUah),
+              source: 'zakupka-latiao'
+            };
+            txList.unshift(newTx);
+          }
+
+          journal.unshift({
+            at: new Date().toISOString(),
+            user: 'Закупка Латяо',
+            action: 'Створено операцію',
+            details: cat + ', ₴ ' + fmt(valUah)
+          });
+        }
+
+        return fetch(FIN_OBLIK_URL + '.json', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transactions: txList,
+            journal: journal.slice(0, 100),
+            updatedAt: Date.now()
+          })
+        });
+      })
+      .then(function () {
+        if (statusEl) {
+          statusEl.innerHTML = '<span style=\"display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;\"></span> Finbase: передано';
+          setTimeout(function () {
+            if (statusEl) {
+              statusEl.innerHTML = '<span style=\"display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;\"></span> Finbase (Біла карта)';
+            }
+          }, 3500);
+        }
+        return true;
+      })
+      .catch(function (err) {
+        console.error('Помилка синхронізації з Finbase:', err);
+        if (statusEl) {
+          statusEl.innerHTML = '<span style=\"display:inline-block;width:7px;height:7px;border-radius:50%;background:#e53935;\"></span> Finbase: помилка';
+        }
+        return false;
+      });
+  }
+
+  function addFin() {
+    var m = M(), a = num($('#finAmt').value);
+    if (!m) return;
+    if (!(a > 0)) { flash('Введіть суму більше нуля'); $('#finAmt').focus(); return; }
+    m.fin = m.fin || [];
+    var fk = $('#finKind').value, pcv = fk === 'parcel' ? num($('#finParcel').value) : 0;
+    if (fk === 'parcel' && !pcv) { flash('Немає посилок: обʼєднайте рядки в колонці «Посилка» або додайте позиції'); return; }
+    var entry = { id: uid(), d: $('#finDate').value || today(), k: fk === 'parcel' ? 'delivery' : fk, pc: pcv || 0, a: a, art: $('#finArt').value.trim(), n: $('#finNote').value.trim() };
+    m.fin.push(entry);
+    ['#finAmt', '#finArt', '#finNote'].forEach(function (i) { $(i).value = ''; });
+    flushMeta(state.pid); renderFin();
+    syncFinToExternal(entry, m, false);
+  }
+
+  var autoFinPrompt = null;
+  var autoFinDeclined = {};
+  function closeAutoFinModal() {
+    $('#autoFinModal').hidden = true;
+    autoFinPrompt = null;
+  }
+  function maybePromptAutoFin(id) {
+    var m = M(), r = state.rows.get(id);
+    if (!m || !m.autoFin || !r) return;
+    var amount = num(r.total);
+    if (!(amount > 0)) return;
+    m.fin = m.fin || [];
+    var existing = m.fin.find(function (e) { return e.rid === id && e.k === 'goods'; });
+    var art = (r.art || '').trim();
+    var unchanged = existing && num(existing.a) === amount && (existing.art || '') === art;
+    if (unchanged && existing.ext) return;
+    var declineKey = state.pid + ':' + id;
+    var signature = String(amount) + '|' + art;
+    if (autoFinDeclined[declineKey] === signature || autoFinPrompt) return;
+    autoFinPrompt = { pid: state.pid, id: id, amount: amount, art: art, existing: existing, unchanged: unchanged, declineKey: declineKey, signature: signature };
+    $('#autoFinTitle').textContent = unchanged ? 'Передати у загальний фін облік?' : (existing ? 'Оновити запис у фін обліку?' : 'Додати у фін облік?');
+    $('#autoFinText').textContent = (unchanged ? 'Передати витрату' : (existing ? 'Оновити витрату' : 'Створити витрату')) + ' на товар «' + (art || 'без артикулу') + '» на суму ' + money(amount, '₴') + '?';
+    $('#autoFinYes').textContent = unchanged ? 'Передати витрату' : (existing ? 'Оновити витрату' : 'Додати витрату');
+    $('#autoFinModal').hidden = false;
+    setTimeout(function () { $('#autoFinYes').focus(); }, 0);
+  }
+  $('#autoFinNo').addEventListener('click', function () {
+    if (autoFinPrompt) autoFinDeclined[autoFinPrompt.declineKey] = autoFinPrompt.signature;
+    closeAutoFinModal();
+  });
+  $('#autoFinYes').addEventListener('click', function () {
+    var p = autoFinPrompt;
+    if (!p) return;
+    var m = state.purchases.get(p.pid), r = state.rows.get(p.id);
+    if (!m || !r) { closeAutoFinModal(); return; }
+    var entry = p.existing;
+    var previous = entry ? Object.assign({}, entry) : null;
+    if (entry) {
+      entry.a = p.amount;
+      entry.art = p.art;
+      entry.d = today();
+    } else {
+      entry = { id: uid(), d: today(), k: 'goods', pc: 0, a: p.amount, art: p.art, n: 'Автоматично із суми закупки', rid: p.id, ext: false };
+      m.fin = m.fin || [];
+      m.fin.push(entry);
+    }
+    delete autoFinDeclined[p.declineKey];
+    closeAutoFinModal();
+    flushMeta(p.pid);
+    renderFin();
+    var removePrevious = previous && previous.ext && !p.unchanged;
+    var syncJob = removePrevious ? syncFinToExternal(previous, m, true) : Promise.resolve(true);
+    syncJob.then(function () { return syncFinToExternal(entry, m, false); }).then(function (ok) {
+      entry.ext = !!ok;
+      flushMeta(p.pid);
+      if (ok) flash(p.existing ? 'Витрату передано й оновлено' : 'Витрату передано у загальний фін облік');
+      else flash('Не вдалося передати у загальний фін облік');
+    });
+  });
+  function renderFinPage() {
+    var all = [], months = {};
+    state.purchases.forEach(function (m, id) { (m.fin || []).forEach(function (e) { all.push({ e: e, id: id, m: m }); if (e.d) months[e.d.slice(0, 7)] = 1; }); });
+    var sel = $('#fMonth'), keep = sel.value;
+    sel.textContent = '';
+    var o = document.createElement('option'); o.value = ''; o.textContent = 'Усі місяці'; sel.appendChild(o);
+    Object.keys(months).sort().reverse().forEach(function (k) {
+      var p = k.split('-'), op = document.createElement('option'); op.value = k; op.textContent = MONTHS[+p[1] - 1] + ' ' + p[0]; sel.appendChild(op);
+    });
+    sel.value = months[keep] ? keep : '';
+    var mk = sel.value;
+    var rows = all.filter(function (x) { return !mk || (x.e.d || '').slice(0, 7) === mk; }).sort(function (a, b) { return byDate(a.e, b.e); });
+    var body = $('#fgRows'); body.textContent = '';
+    rows.forEach(function (x) {
+      var tr = finRow(x.e), td = el('td'), b = el('button', 'open', x.m.name || 'Без назви');
+      b.type = 'button'; b.addEventListener('click', function () { openPurchase(x.id, false); });
+      td.appendChild(b); tr.appendChild(td);
+      tr.appendChild(el('td', '', x.e.art || '—')); tr.appendChild(el('td', '', x.e.n || '—'));
+      amtCell(tr, x.e, '₴'); body.appendChild(tr);
+    });
+    // row order: date, type, purchase, ... fix: move purchase cell to 2nd column
+    Array.prototype.forEach.call(body.children, function (tr) { tr.insertBefore(tr.children[2], tr.children[1]); });
+    $('#fgEmpty').hidden = rows.length > 0;
+    var k = $('#fgKpis'); k.textContent = '';
+    var t = sumFin(rows.map(function (x) { return { e: x.e, m: x.m }; }));
+    kpi(k, 'Товари', money(t.goods, '₴')); kpi(k, 'Доставка', money(t.delivery, '₴'));
+    kpi(k, 'Повернено', money(t.refund, '₴'), 'good'); kpi(k, 'Чисті витрати', money(t.net, '₴'));
+  }
+  function showFin() {
+    state.view = 'fin';
+    $('#vList').hidden = true; $('#vFin').hidden = false;
+    setTop(); renderFinPage();
+  }
+  function paintCurrency() {
+    var c = cur();
+    document.querySelectorAll('.cur').forEach(function (e) { e.textContent = c; });
+    $('#fxBox').hidden = c === '₴';
+  }
+  function paintMeta(onlyIdle) {
+    var m = M();
+    if (!m) return;
+    function set(id, v) { var e = $(id); if (onlyIdle && document.activeElement === e) return; if (e.value !== v) e.value = v; }
+    set('#mName', m.name || '');
+    set('#mDate', m.date || '');
+    set('#mStatus', m.status);
+    set('#mCur', m.cur || '$');
+    set('#mRate', show(m.rate));
+    set('#mFx', show(m.fx));
+    set('#mNote', m.note || '');
+    $('#mAutoFin').checked = m.autoFin !== false;
+    paintCurrency();
+    renderFin();
+  }
+  function openPurchase(pid, fresh) {
+    var m = state.purchases.get(pid);
+    if (!m) return;
+    state.view = 'detail';
+    state.pid = pid;
+    state.rows.clear();
+    refs.clear();
+    tbody.textContent = '';
+    state.filter = '';
+    sel = null;
+    anc = null;
+    state.lay = emptyLay();
+    state.eff = new Map();
+    updateSelUI();
+    itemsLoaded = false;
+    $('#vList').hidden = true;
+    $('#vFin').hidden = true;
+    $('#finDate').value = today();
+    $('#vDetail').hidden = false;
+    setTop();
+    paintMeta(false);
+    updateEmpty();
+    if (mode === 'db') {
+      unsubItems = db.collection(itemsPath(pid)).orderBy('ts', 'asc').onSnapshot(function (snap) {
+        if (state.pid !== pid) return;
+        snap.docChanges().forEach(function (ch) {
+          var id = ch.doc.id;
+          if (ch.type === 'removed') { removeRowDom(id); return; }
+          var d = ch.doc.data();
+          if (d) applyRemote(id, d);
+        });
+        itemsLoaded = true;
+        afterItems();
+      }, function (err) { setStatus('error', errText(err)); itemsLoaded = true; afterItems(); });
+    } else {
+      var it = localItems[pid] || {};
+      Object.keys(it).forEach(function (id) { applyRemote(id, it[id]); });
+      itemsLoaded = true;
+      afterItems();
+    }
+    if (fresh) {
+      addRow({}, false);
+      var nm = $('#mName');
+      nm.focus();
+      nm.select();
+    }
+  }
+  function closePurchase(skipFlush) {
+    if (!skipFlush) flushAll();
+    if (unsubItems) { unsubItems(); unsubItems = null; }
+    state.view = 'list';
+    state.pid = null;
+    state.rows.clear();
+    refs.clear();
+    tbody.textContent = '';
+    sel = null;
+    anc = null;
+    state.eff = new Map();
+    updateSelUI();
+    $('#vDetail').hidden = true;
+    $('#vList').hidden = false;
+    paintCurrency();
+    setTop();
+    renderList();
+  }
+  function afterItems() {
+    relayout();
+    recomputeAll();
+    applyFilter();
+    updateEmpty();
+    renderFin();
+  }
+
+  /* ---------- rows ---------- */
+  function buildRow(id) {
+    var tr = document.createElement('tr');
+    tr.dataset.id = id;
+    var p = id.replace(/[^A-Za-z0-9_-]/g, '');
+    tr.innerHTML =
+      '<td class="idx" data-c="idx"></td>' +
+      '<td class="cell c-rcv" data-p="rcv"><label class="chk-rcv-wrap" title="Позначити посилку як отриману"><input type="checkbox" class="chk-rcv" data-k="rcv" aria-label="Посилка отримана"></label></td>' +
+      '<td class="cell c-art" data-c="art"><input class="in" id="' + p + '-art" data-k="art" autocomplete="off" spellcheck="false" placeholder="Артикул" aria-label="Артикул"></td>' +
+      '<td class="c-photo" data-c="photo"><button type="button" class="thumb" data-act="photo" aria-label="Фото"></button><input type="file" accept="image/*" hidden id="' + p + '-file" data-act="file"></td>' +
+      '<td class="cell c-status" data-c="status"><select class="in status-sel" id="' + p + '-status" data-k="status" aria-label="Статус товару"><option value="Замовлено">Замовлено</option><option value="На складі">На складі</option></select></td>' +
+      '<td class="cell" data-c="qty"><input class="in numin" id="' + p + '-qty" data-k="qty" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Кількість"></td>' +
+      '<td class="cell" data-c="total"><input class="in numin" id="' + p + '-total" data-k="total" inputmode="decimal" autocomplete="off" placeholder="0,00" aria-label="Сума закупки"></td>' +
+      '<td class="calc"><input class="in numin ov" data-o="unit" data-ov="unit" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Вартість за шт" title="Рахується автоматично. Введіть своє значення, очистіть, щоб повернути авто"><div class="sub"></div></td>' +
+      '<td class="cell" data-c="weight"><input class="in numin" id="' + p + '-weight" data-k="weight" inputmode="decimal" autocomplete="off" placeholder="0,000" aria-label="Загальна вага всієї кількості, кг"></td>' +
+      '<td class="cell"><input class="in note" data-k="ttn" autocomplete="off" placeholder="ТТН" aria-label="ТТН посилки"></td>' +
+      '<td class="calc" data-c="planDel"><input class="in numin ov" id="' + p + '-planDel" data-o="planDel" data-ov="planDel" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Планова вартість доставки" title="Рахується автоматично. Введіть своє значення, очистіть, щоб повернути авто"><div class="sub" data-o="planDelSub"></div></td>' +
+      '<td class="cell" data-c="delFact"><input class="in numin" id="' + p + '-delFact" data-k="delFact" inputmode="decimal" autocomplete="off" placeholder="0,00" aria-label="Фактична вартість доставки"><div class="sub" data-o="delDelta"></div></td>' +
+      '<td class="calc" data-c="planCost"><input class="in numin ov" id="' + p + '-planCost" data-o="planCost" data-ov="planCost" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Планова собівартість" title="Рахується автоматично. Введіть своє значення, очистіть, щоб повернути авто"><div class="sub" data-o="planCostSub"></div></td>' +
+      '<td class="calc"><input class="in numin ov" data-o="factCost" data-ov="factCost" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Фактична собівартість" title="Рахується автоматично. Введіть своє значення, очистіть, щоб повернути авто"><div class="sub" data-o="factSub"></div></td>' +
+      '<td class="calc" data-p="pw"><input class="in numin ov" data-o="pwPlan" data-ov="pwPlan" inputmode="decimal" autocomplete="off" placeholder="0,000" aria-label="Планова вага посилки" title="Введіть вагу. Якщо порожньо, підставляється сума загальної ваги позицій посилки"></td>' +
+      '<td class="cell" data-p="pw"><input class="in numin" data-k="pwf" inputmode="decimal" autocomplete="off" placeholder="0,000" aria-label="Фактична вага посилки"><div class="sub" data-o="pwDelta"></div></td>' +
+      '<td class="cell" data-c="retail"><input class="in numin" id="' + p + '-retail" data-k="retail" inputmode="decimal" autocomplete="off" placeholder="0,00" aria-label="Роздрібна вартість"><div class="sub" data-o="margin"></div></td>' +
+      '<td class="cell"><input class="in note" data-k="note" autocomplete="off" placeholder="Коментар" aria-label="Коментар"></td>' +
+      '<td class="act"><button type="button" class="del" data-act="del" aria-label="Видалити рядок">×</button></td>';
+    var o = {};
+    tr.querySelectorAll('[data-o]').forEach(function (e) { o[e.getAttribute('data-o')] = e; });
+    o.tr = tr;
+    o.thumb = tr.querySelector('.thumb');
+    o.file = tr.querySelector('input[type=file]');
+    o.cells = {};
+    tr.querySelectorAll('[data-c]').forEach(function (e) { o.cells[e.getAttribute('data-c')] = e; });
+    o.pc = Array.prototype.slice.call(tr.querySelectorAll('td[data-p]'));
+    o.cellRcv = tr.querySelector('.c-rcv');
+    o.chkRcv = tr.querySelector('input[data-k="rcv"]');
+    o.inputs = {};
+    tr.querySelectorAll('input[data-k], select[data-k]').forEach(function (e) { o.inputs[e.getAttribute('data-k')] = e; });
+    refs.set(id, o);
+    return tr;
+  }
+  var STRK = ['art', 'note', 'ttn', 'status'];
+  function paintRcvStatus(id) {
+    var topId = (state.lay && state.lay.idx && state.lay.idx.cov[id]) || id;
+    var members = groupMembers('idx', topId) || [topId];
+    var rTop = state.rows.get(topId);
+    var isRcv = !!(rTop && rTop.rcv);
+    members.forEach(function (mId) {
+      var o = refs.get(mId);
+      if (o) {
+        if (o.chkRcv) o.chkRcv.checked = isRcv;
+        if (o.cells && o.cells.idx) o.cells.idx.classList.toggle('rcv', isRcv);
+        if (o.cellRcv) o.cellRcv.classList.toggle('rcv', isRcv);
+        if (o.tr) o.tr.classList.toggle('row-rcv', isRcv);
+      }
+    });
+  }
+  function fillInputs(id, onlyIdle) {
+    var r = state.rows.get(id), o = refs.get(id);
+    if (!r || !o) return;
+    Object.keys(o.inputs).forEach(function (k) {
+      if (k === 'rcv') return;
+      var e = o.inputs[k];
+      if (onlyIdle && document.activeElement === e) return;
+      var val = STRK.indexOf(k) >= 0 ? (r[k] || '') : show(r[k]);
+      if (k === 'status') {
+        val = r.status || 'Замовлено';
+        e.setAttribute('data-st', val);
+      }
+      if (e.value !== val) e.value = val;
+    });
+    if (o.chkRcv) o.chkRcv.checked = !!r.rcv;
+    setThumb(id);
+    paintRcvStatus(id);
+  }
+  function setThumb(id) {
+    var r = state.rows.get(id), o = refs.get(id);
+    var b = o.thumb;
+    b.textContent = '';
+    if (r.photo && /^data:image\//.test(r.photo)) {
+      var img = document.createElement('img');
+      img.alt = '';
+      img.src = r.photo;
+      b.appendChild(img);
+    } else b.textContent = '+';
+  }
+  function insertSorted(tr, ts) {
+    var kids = tbody.children;
+    for (var i = 0; i < kids.length; i++) {
+      var other = state.rows.get(kids[i].dataset.id);
+      if (other && other.ts > ts) { tbody.insertBefore(tr, kids[i]); return; }
+    }
+    tbody.appendChild(tr);
+  }
+  function parcelCount() { var n = 0; state.rows.forEach(function () { n++; }); if (state.lay && state.lay.idx) Object.keys(state.lay.idx.span).forEach(function (k) { n -= state.lay.idx.span[k] - 1; }); return Math.max(0, n); }
+  function renumber() {
+    var n = 0, pcs = 0;
+    Array.prototype.forEach.call(tbody.children, function (tr) {
+      if (state.lay && state.lay.idx && state.lay.idx.cov[tr.dataset.id]) return;
+      n++;
+      var sp = state.lay && state.lay.idx ? state.lay.idx.span[tr.dataset.id] : 0;
+      tr.firstChild.textContent = n;
+      if (sp >= 2) { var sm = el('small', '', sp + ' поз.'); sm.style.cssText = 'display:block;font-weight:400;color:var(--caption-muted)'; tr.firstChild.appendChild(sm); }
+      tr.firstChild.title = 'Посилка ' + n + (sp >= 2 ? ' · позицій: ' + sp : '');
+      pcs = n;
+    });
+  }
+  function setV(e, n) {
+    e.textContent = n == null ? '—' : fmt(n);
+    e.classList.toggle('nil', n == null);
+  }
+  function setOv(e, n, isOv, dg) {
+    if (document.activeElement !== e) e.value = n == null ? '' : n.toFixed(dg == null ? 2 : dg).replace('.', ',');
+    e.classList.toggle('ovr', isOv);
+  }
+  function setSub(e, text, kind) {
+    e.textContent = text || '';
+    e.classList.toggle('good', kind === 'good');
+    e.classList.toggle('bad', kind === 'bad');
+  }
+  function recompute(id, skipStats) {
+    var r = state.rows.get(id), o = refs.get(id);
+    if (!r || !o) return;
+    var c = calcId(id);
+    OVK.forEach(function (k) {
+      if (k === 'planDel' || k === 'planCost') return;
+      setOv(o[k], c[k], c.ov[k] != null);
+    });
+
+    var gp = groupMembers('planDel', id);
+    if (gp) {
+      var eTop = state.eff.get(id) || {};
+      var isOvP = !!(r.ov && r.ov.planDel != null);
+      var dispP = eTop.planDelGroupTotal != null ? eTop.planDelGroupTotal : (isOvP ? r.ov.planDel : null);
+      setOv(o.planDel, dispP, isOvP);
+      setSub(o.planDelSub, 'група · рядків: ' + gp.length);
+    } else {
+      setOv(o.planDel, c.planDel, c.ov.planDel != null);
+      setSub(o.planDelSub, '');
+    }
+
+    var gc = groupMembers('planCost', id);
+    if (gc) {
+      var eTopC = state.eff.get(id) || {};
+      var isOvC = !!(r.ov && r.ov.planCost != null);
+      var dispC = eTopC.planCostGroupVal != null ? eTopC.planCostGroupVal : c.planCost;
+      setOv(o.planCost, dispC, isOvC);
+      setSub(o.planCostSub, 'група · рядків: ' + gc.length);
+    } else {
+      setOv(o.planCost, c.planCost, c.ov.planCost != null);
+      setSub(o.planCostSub, '');
+    }
+    var pm = groupMembers('idx', id) || [id], pws = 0;
+    pm.forEach(function (m2) { var c2 = calcId(m2); if (c2.w != null && c2.q != null) pws += c2.w * c2.q; });
+    var ovp = r.ov && r.ov.pwPlan != null ? r.ov.pwPlan : null, pwe = ovp != null ? ovp : (pws > 0 ? pws : null);
+    setOv(o.pwPlan, pwe, ovp != null, 3);
+    var pwf = num(r.pwf);
+    if (pwf != null && pwe > 0) { var dw = pwf - pwe; setSub(o.pwDelta, sgn(dw) + fmt(Math.abs(dw)) + ' до плану', dw > 0 ? 'bad' : dw < 0 ? 'good' : ''); } else setSub(o.pwDelta, '');
+    var gd = groupMembers('delFact', id);
+    if (gd) {
+      var sdf = 0, spl = 0, okp = true;
+      gd.forEach(function (m) { var cm = calcId(m); if (cm.df != null) sdf += cm.df; if (cm.planDel != null) spl += cm.planDel; else okp = false; });
+      if (okp) { var dg = sdf - spl; setSub(o.delDelta, sgn(dg) + fmt(Math.abs(dg)) + ' ₴ до плану (група)', dg > 0 ? 'bad' : dg < 0 ? 'good' : ''); }
+      else setSub(o.delDelta, 'група · рядків: ' + gd.length);
+    } else if (c.planDel != null && c.df != null) {
+      var d = c.df - c.planDel;
+      setSub(o.delDelta, sgn(d) + fmt(Math.abs(d)) + ' ₴ до плану', d > 0 ? 'bad' : d < 0 ? 'good' : '');
+    } else setSub(o.delDelta, '');
+    if (c.factCost != null && c.planCost != null) {
+      var dc = c.factCost - c.planCost;
+      setSub(o.factSub, sgn(dc) + fmt(Math.abs(dc)) + ' до плану', dc > 0 ? 'bad' : dc < 0 ? 'good' : '');
+    } else setSub(o.factSub, '');
+    var gm = groupMembers('retail', id);
+    if (gm) {
+      var gb = 0;
+      gm.forEach(function (m) { var cm = calcId(m); if (cm.rt != null && cm.q > 0) gb += cm.rt * cm.q; });
+      setSub(o.margin, gb > 0 ? '= ' + fmt(gb) + ' ₴ продажі (група)' : '', 'good');
+    } else if (c.rt != null && c.rt > 0 && c.q > 0) {
+      setSub(o.margin, '= ' + fmt(c.rt * c.q) + ' ₴ продажі', 'good');
+      o.margin.title = 'Очікувана сума продажів: роздрібна вартість × к-сть';
+    } else setSub(o.margin, '');
+    if (!skipStats) scheduleStats();
+  }
+  function recomputeAll() {
+    computeEff();
+    state.rows.forEach(function (r, id) { recompute(id, true); });
+    scheduleStats();
+  }
+  function addRow(data, focus) {
+    var id = mode === 'db' ? db.collection(itemsPath(state.pid)).doc().id : uid();
+    var r = { note: '', ttn: '', pwf: null, art: '', photo: '', status: 'Замовлено', qty: null, total: null, weight: null, delFact: null, retail: null, mg: null, rcv: false, ts: Date.now() * 1000 + (seq++ % 1000) };
+    Object.keys(data || {}).forEach(function (k) { r[k] = data[k]; });
+    state.rows.set(id, r);
+    var tr = buildRow(id);
+    insertSorted(tr, r.ts);
+    fillInputs(id);
+    applyFilter();
+    relayout();
+    recomputeAll();
+    flushItem(state.pid, id);
+    updateEmpty();
+    if (focus) {
+      tr.scrollIntoView({ block: 'nearest' });
+      refs.get(id).inputs.art.focus();
+    }
+    return id;
+  }
+  function removeRowDom(id) {
+    if (sel && (sel.aId === id || sel.bId === id)) sel = null;
+    if (anc && anc.id === id) anc = null;
+    var o = refs.get(id);
+    if (o) o.tr.remove();
+    refs.delete(id);
+    state.rows.delete(id);
+    if (timers['i:' + id]) { clearTimeout(timers['i:' + id]); delete timers['i:' + id]; }
+    renumber();
+    updateEmpty();
+    scheduleStats();
+  }
+  function deleteRow(id) {
+    var pid = state.pid;
+    var touched = adjustForDelete(id);
+    removeRowDom(id);
+    relayout();
+    recomputeAll();
+    touched.forEach(function (t) { if (refs.get(t)) fillInputs(t, true); flushItem(pid, t); });
+    if (mode === 'local') { localSave(); return; }
+    track((chain['i:' + id] || Promise.resolve()).then(function () { return db.collection(itemsPath(pid)).doc(id).delete(); }));
+  }
+  function applyRemote(id, d) {
+    var r = state.rows.get(id);
+    if (!r) {
+      r = { art: d.art || '', photo: d.photo || '', status: d.status || 'Замовлено', qty: num(d.qty), total: num(d.total), weight: num(d.weight), delFact: num(d.delFact), retail: num(d.retail), mg: cleanMg(d.mg), ov: cleanOv(d.ov), note: d.note || '', ttn: d.ttn || '', pwf: num(d.pwf), rcv: !!d.rcv, ts: Number(d.ts) || Date.now() * 1000 };
+      state.rows.set(id, r);
+      var tr = buildRow(id);
+      insertSorted(tr, r.ts);
+      fillInputs(id);
+      recompute(id, true);
+      return;
+    }
+    if (timers['i:' + id]) return;
+    var changed = false;
+    var mgc = cleanMg(d.mg);
+    if (JSON.stringify(mgc) !== JSON.stringify(cleanMg(r.mg))) { r.mg = mgc; changed = true; }
+    var ovc = cleanOv(d.ov);
+    if (JSON.stringify(ovc) !== JSON.stringify(cleanOv(r.ov))) { r.ov = ovc; changed = true; }
+    ['qty', 'total', 'weight', 'delFact', 'retail', 'pwf'].forEach(function (k) {
+      var v = num(d[k]);
+      if (v !== num(r[k]) && document.activeElement !== refs.get(id).inputs[k]) { r[k] = v; changed = true; }
+    });
+    var a = d.art || '';
+    if (a !== (r.art || '') && document.activeElement !== refs.get(id).inputs.art) { r.art = a; changed = true; }
+    var tt = d.ttn || '';
+    if (tt !== (r.ttn || '') && document.activeElement !== refs.get(id).inputs.ttn) { r.ttn = tt; changed = true; }
+    var nt = d.note || '';
+    if (nt !== (r.note || '') && document.activeElement !== refs.get(id).inputs.note) { r.note = nt; changed = true; }
+    var ph = d.photo || '';
+    if (ph !== (r.photo || '')) { r.photo = ph; changed = true; }
+    var st = d.status || 'Замовлено';
+    if (st !== (r.status || 'Замовлено') && document.activeElement !== refs.get(id).inputs.status) { r.status = st; changed = true; }
+    var rcv = !!d.rcv;
+    if (rcv !== !!r.rcv) { r.rcv = rcv; changed = true; }
+    if (changed) { fillInputs(id, true); recompute(id, true); }
+  }
+
+  /* ---------- merged cells (per column) ---------- */
+  var MCOLS = ['idx', 'art', 'photo', 'status', 'qty', 'total', 'weight', 'planDel', 'delFact', 'planCost', 'retail'];
+  var MNAMES = { idx: 'Посилка', art: 'Артикул', photo: 'Фото', status: 'Статус', qty: 'К-сть', total: 'Сума закупки', weight: 'Вага', planDel: 'Планова доставка', delFact: 'Фактична доставка', planCost: 'Планова собівартість', retail: 'Роздрібна вартість' };
+  var sel = null, anc = null;
+  function emptyLay() { var l = {}; MCOLS.forEach(function (c) { l[c] = { span: {}, cov: {} }; }); return l; }
+  function cleanMg(mg) {
+    if (!mg) return null;
+    var o = {}, any = false;
+    MCOLS.forEach(function (c) { var n = Number(mg[c]); if (n >= 2) { o[c] = Math.floor(n); any = true; } });
+    return any ? o : null;
+  }
+  function orderIds() { return Array.prototype.map.call(tbody.children, function (tr) { return tr.dataset.id; }); }
+  function paintParcelGroups(ids, lay) {
+    ids.forEach(function (id) {
+      var tr = refs.get(id) && refs.get(id).tr;
+      if (!tr) return;
+      tr.classList.remove('parcel-group', 'parcel-group-start', 'parcel-group-end');
+      tr.style.removeProperty('--parcel-bg');
+      tr.style.removeProperty('--parcel-hover');
+      tr.style.removeProperty('--parcel-edge');
+    });
+
+    var groupIndex = 0;
+    ids.forEach(function (topId, topIndex) {
+      var count = lay.idx.span[topId];
+      if (!(count >= 2)) return;
+
+      /* Golden-angle spacing keeps neighbouring parcels visually distinct. */
+      var hue = Math.round((groupIndex * 137.508 + 28) % 360);
+      var bg = 'hsl(' + hue + ', 72%, 96%)';
+      var hover = 'hsl(' + hue + ', 72%, 93%)';
+      var edge = 'hsl(' + hue + ', 48%, 78%)';
+      var members = ids.slice(topIndex, topIndex + count);
+
+      members.forEach(function (id, memberIndex) {
+        var tr = refs.get(id) && refs.get(id).tr;
+        if (!tr) return;
+        tr.classList.add('parcel-group');
+        if (memberIndex === 0) tr.classList.add('parcel-group-start');
+        if (memberIndex === members.length - 1) tr.classList.add('parcel-group-end');
+        tr.style.setProperty('--parcel-bg', bg);
+        tr.style.setProperty('--parcel-hover', hover);
+        tr.style.setProperty('--parcel-edge', edge);
+      });
+      groupIndex++;
+    });
+  }
+  function relayout() {
+    var ids = orderIds();
+    var lay = emptyLay();
+    MCOLS.forEach(function (c) {
+      var covered = {};
+      for (var i = 0; i < ids.length; i++) {
+        if (covered[ids[i]]) continue;
+        var r = state.rows.get(ids[i]);
+        var n = r && r.mg ? Number(r.mg[c]) : 0;
+        if (!(n >= 2)) continue;
+        n = Math.min(Math.floor(n), ids.length - i);
+        if (n < 2) continue;
+        lay[c].span[ids[i]] = n;
+        for (var k = 1; k < n; k++) { covered[ids[i + k]] = true; lay[c].cov[ids[i + k]] = ids[i]; }
+      }
+    });
+    state.lay = lay;
+    ids.forEach(function (id) {
+      var o = refs.get(id);
+      if (!o) return;
+      MCOLS.forEach(function (c) {
+        var td = o.cells[c];
+        if (!td) return;
+        var n = lay[c].span[id] || 1;
+        td.rowSpan = n;
+        td.hidden = !!lay[c].cov[id];
+        td.classList.toggle('mgd', n > 1);
+      });
+      (o.pc || []).forEach(function (td) { td.rowSpan = lay.idx.span[id] || 1; td.hidden = !!lay.idx.cov[id]; });
+    });
+    paintParcelGroups(ids, lay);
+    renumber();
+    ids.forEach(function (id) {
+      if (!state.lay || !state.lay.idx || !state.lay.idx.cov[id]) {
+        paintRcvStatus(id);
+      }
+    });
+    paintSel();
+  }
+  function groupMembers(c, id) {
+    var n = state.lay && state.lay[c] ? state.lay[c].span[id] : 0;
+    if (!(n >= 2)) return null;
+    var ids = orderIds(), j = ids.indexOf(id);
+    return ids.slice(j, j + n);
+  }
+  function computeEff() {
+    var ids = orderIds();
+    var eff = new Map();
+    var rate0 = rate(), f0 = fx();
+    ids.forEach(function (id) {
+      var r = state.rows.get(id);
+      if (r) eff.set(id, {
+        art: r.art || '',
+        photo: r.photo || '',
+        status: r.status || 'Замовлено',
+        qty: num(r.qty),
+        total: num(r.total),
+        weight: num(r.weight),
+        delFact: num(r.delFact),
+        retail: num(r.retail),
+        planDel: (r.ov && r.ov.planDel != null) ? r.ov.planDel : null,
+        planCost: (r.ov && r.ov.planCost != null) ? r.ov.planCost : null
+      });
+    });
+    if (state.lay) {
+      ['art', 'photo', 'status', 'qty', 'weight', 'retail'].forEach(function (c) {
+        var cov = state.lay[c].cov;
+        Object.keys(cov).forEach(function (id) {
+          var e = eff.get(id), t = eff.get(cov[id]);
+          if (e && t) e[c] = t[c];
+        });
+      });
+      ['total', 'delFact'].forEach(function (c) {
+        Object.keys(state.lay[c].span).forEach(function (tid) {
+          var mem = groupMembers(c, tid);
+          if (!mem || !eff.get(tid)) return;
+          var T = eff.get(tid)[c];
+          var bw = mem.map(function (m) { var e = eff.get(m) || {}; return c === 'delFact' ? (e.weight || 0) : (e.qty || 0); });
+          var s = bw.reduce(function (a, b) { return a + b; }, 0);
+          if (!(s > 0) && c === 'delFact') {
+            bw = mem.map(function (m) { return (eff.get(m) || {}).qty || 0; });
+            s = bw.reduce(function (a, b) { return a + b; }, 0);
+          }
+          mem.forEach(function (m, i) {
+            if (eff.get(m)) eff.get(m)[c] = T == null ? null : (s > 0 ? T * bw[i] / s : T / mem.length);
+          });
+        });
+      });
+      if (state.lay.planDel) {
+        Object.keys(state.lay.planDel.span).forEach(function (tid) {
+          var mem = groupMembers('planDel', tid);
+          if (!mem) return;
+          var topR = state.rows.get(tid);
+          var topOv = (topR && topR.ov && topR.ov.planDel != null) ? topR.ov.planDel : null;
+          var bw = mem.map(function (m) { var e = eff.get(m) || {}; return (e.weight || 0); });
+          var s = bw.reduce(function (a, b) { return a + b; }, 0);
+          if (!(s > 0)) {
+            bw = mem.map(function (m) { return (eff.get(m) || {}).qty || 0; });
+            s = bw.reduce(function (a, b) { return a + b; }, 0);
+          }
+          if (topOv != null) {
+            mem.forEach(function (m, i) {
+              if (eff.get(m)) {
+                eff.get(m).planDel = s > 0 ? topOv * bw[i] / s : topOv / mem.length;
+                eff.get(m).planDelGroupOv = true;
+              }
+            });
+            if (eff.get(tid)) eff.get(tid).planDelGroupTotal = topOv;
+          } else {
+            var sumAuto = 0, anyAuto = false;
+            var rateUah = (rate0 != null && f0 != null) ? rate0 * f0 : null;
+            mem.forEach(function (m) {
+              var em = eff.get(m) || {};
+              var qm = num(em.qty), wm = num(em.weight);
+              if (wm != null && rateUah != null) {
+                var am = wm * rateUah;
+                sumAuto += am;
+                anyAuto = true;
+                if (eff.get(m)) eff.get(m).planDel = am;
+              } else {
+                if (eff.get(m)) eff.get(m).planDel = null;
+              }
+            });
+            if (eff.get(tid)) eff.get(tid).planDelGroupTotal = anyAuto ? sumAuto : null;
+          }
+        });
+      }
+      if (state.lay.planCost) {
+        Object.keys(state.lay.planCost.span).forEach(function (tid) {
+          var mem = groupMembers('planCost', tid);
+          if (!mem) return;
+          var topR = state.rows.get(tid);
+          var topOvCost = (topR && topR.ov && topR.ov.planCost != null) ? topR.ov.planCost : null;
+          if (topOvCost != null) {
+            mem.forEach(function (m) {
+              if (eff.get(m)) {
+                eff.get(m).planCost = topOvCost;
+                eff.get(m).planCostGroupOv = true;
+              }
+            });
+            if (eff.get(tid)) eff.get(tid).planCostGroupVal = topOvCost;
+          } else {
+            var sumWeighted = 0, sumQ = 0, anyCost = false;
+            var rateUah = (rate0 != null && f0 != null) ? rate0 * f0 : null;
+            mem.forEach(function (m) {
+              var em = eff.get(m) || {};
+              var qm = num(em.qty) || 0, tm = num(em.total);
+              var wm = num(em.weight);
+              var rM = state.rows.get(m);
+              var ovUnitM = rM && rM.ov && rM.ov.unit != null ? rM.ov.unit : null;
+              var unitM = ovUnitM != null ? ovUnitM : ((qm > 0 && tm != null) ? tm / qm : null);
+              var pdM = em.planDel != null ? em.planDel : ((wm != null && rateUah != null) ? wm * rateUah : null);
+              var delPerUnitM = (pdM != null && qm > 0) ? (pdM / qm) : ((wm != null && rateUah != null && qm > 0) ? wm * rateUah / qm : null);
+              var pcM = (unitM != null && delPerUnitM != null) ? unitM + delPerUnitM : null;
+              if (pcM != null && qm > 0) {
+                sumWeighted += pcM * qm;
+                sumQ += qm;
+                anyCost = true;
+              }
+            });
+            var avgCost = sumQ > 0 ? sumWeighted / sumQ : null;
+            mem.forEach(function (m) {
+              if (eff.get(m)) {
+                eff.get(m).planCost = avgCost;
+                eff.get(m).planCostGroupOv = false;
+              }
+            });
+            if (eff.get(tid)) eff.get(tid).planCostGroupVal = anyCost ? avgCost : null;
+          }
+        });
+      }
+    }
+    state.eff = eff;
+  }
+  function selRange() {
+    if (!sel) return null;
+    var ids = orderIds(), a = ids.indexOf(sel.aId), b = ids.indexOf(sel.bId);
+    if (a < 0 || b < 0) return null;
+    return { col: sel.col, lo: Math.min(a, b), hi: Math.max(a, b), ids: ids };
+  }
+  function topsInRange(c, lo, hi, ids) {
+    var res = [];
+    if (!state.lay) return res;
+    ids.forEach(function (id, i) {
+      var n = state.lay[c].span[id];
+      if (n >= 2 && !(i + n - 1 < lo || i > hi)) res.push(id);
+    });
+    return res;
+  }
+  function paintSel() {
+    document.querySelectorAll('td.sel').forEach(function (t) { t.classList.remove('sel'); });
+    var s = selRange();
+    if (sel && !s) sel = null;
+    if (s) {
+      for (var i = s.lo; i <= s.hi; i++) {
+        var o = refs.get(s.ids[i]);
+        if (o && o.cells[s.col]) o.cells[s.col].classList.add('sel');
+      }
+    }
+    updateSelUI();
+  }
+  function updateSelUI() {
+    var bar = $('#selbar'), hint = $('#mergeHint');
+    var s = selRange();
+    var c, lo, hi, ids;
+    if (s) { c = s.col; lo = s.lo; hi = s.hi; ids = s.ids; }
+    else if (anc && state.rows.has(anc.id)) { ids = orderIds(); c = anc.col; lo = hi = ids.indexOf(anc.id); }
+    if (!ids || lo < 0) { bar.hidden = true; hint.hidden = false; return; }
+    var cnt = hi - lo + 1;
+    var tops = topsInRange(c, lo, hi, ids);
+    var show = cnt >= 2 || tops.length > 0;
+    bar.hidden = !show;
+    hint.hidden = show;
+    if (!show) return;
+    $('#selText').textContent = cnt >= 2 ? MNAMES[c] + ' · виділено рядків: ' + cnt : MNAMES[c] + ' · обʼєднана клітинка';
+    $('#mergeBtn').disabled = cnt < 2;
+    $('#unmergeBtn').disabled = tops.length === 0;
+  }
+  function mergeSel() {
+    var s = selRange();
+    if (!s || s.hi <= s.lo) return;
+    var c = s.col, ids = s.ids, lo = s.lo, hi = s.hi;
+    var again = true;
+    while (again) {
+      again = false;
+      Object.keys(state.lay[c].span).forEach(function (t) {
+        var i = ids.indexOf(t), e = i + state.lay[c].span[t] - 1;
+        if (!(e < lo || i > hi)) {
+          if (i < lo) { lo = i; again = true; }
+          if (e > hi) { hi = e; again = true; }
+        }
+      });
+    }
+    var touched = [];
+    for (var i = lo; i <= hi; i++) {
+      var r = state.rows.get(ids[i]);
+      if (r && r.mg && r.mg[c]) { delete r.mg[c]; r.mg = cleanMg(r.mg); touched.push(ids[i]); }
+    }
+    var top = state.rows.get(ids[lo]);
+    top.mg = top.mg || {};
+    top.mg[c] = hi - lo + 1;
+    if (c === 'idx') {
+      var anyRcv = false;
+      for (var i = lo; i <= hi; i++) {
+        var rCheck = state.rows.get(ids[i]);
+        if (rCheck && rCheck.rcv) anyRcv = true;
+      }
+      for (var i = lo; i <= hi; i++) {
+        var rSet = state.rows.get(ids[i]);
+        if (rSet) {
+          rSet.rcv = anyRcv;
+          if (touched.indexOf(ids[i]) < 0) touched.push(ids[i]);
+        }
+      }
+    }
+    if (touched.indexOf(ids[lo]) < 0) touched.push(ids[lo]);
+    sel = null;
+    anc = { col: c, id: ids[lo] };
+    touched.forEach(function (id) { flushItem(state.pid, id); });
+    relayout();
+    recomputeAll();
+  }
+  function unmergeSel() {
+    var s = selRange(), c, lo, hi, ids;
+    if (s) { c = s.col; lo = s.lo; hi = s.hi; ids = s.ids; }
+    else if (anc) { ids = orderIds(); c = anc.col; lo = hi = ids.indexOf(anc.id); }
+    else return;
+    topsInRange(c, lo, hi, ids).forEach(function (t) {
+      var r = state.rows.get(t);
+      if (r && r.mg) { delete r.mg[c]; r.mg = cleanMg(r.mg); }
+      flushItem(state.pid, t);
+    });
+    sel = null;
+    relayout();
+    recomputeAll();
+  }
+  function adjustForDelete(id) {
+    var ids = orderIds(), j = ids.indexOf(id), touched = [];
+    var r = state.rows.get(id);
+    if (!state.lay || !r) return touched;
+    MCOLS.forEach(function (c) {
+      var L = state.lay[c];
+      if (L.span[id] >= 2) {
+        var n = L.span[id], nid = ids[j + 1], nr = state.rows.get(nid);
+        if (r.mg) { delete r.mg[c]; r.mg = cleanMg(r.mg); }
+        if (nr) {
+          if (c !== 'idx') {
+            if (c === 'planDel' || c === 'planCost') {
+              if (r.ov && r.ov[c] != null) { nr.ov = nr.ov || {}; nr.ov[c] = r.ov[c]; }
+            } else {
+              nr[c] = r[c];
+            }
+          }
+          if (n - 1 >= 2) { nr.mg = nr.mg || {}; nr.mg[c] = n - 1; }
+          else if (nr.mg) { delete nr.mg[c]; nr.mg = cleanMg(nr.mg); }
+          if (touched.indexOf(nid) < 0) touched.push(nid);
+        }
+      } else if (L.cov[id]) {
+        var t = L.cov[id], tr = state.rows.get(t);
+        if (tr && tr.mg) {
+          tr.mg[c] = (tr.mg[c] || 2) - 1;
+          tr.mg = cleanMg(tr.mg);
+          if (touched.indexOf(t) < 0) touched.push(t);
+        }
+      }
+    });
+    return touched;
+  }
+
+  /* ---------- totals ---------- */
+  var statsQueued = false;
+  function scheduleStats() {
+    if (statsQueued) return;
+    statsQueued = true;
+    requestAnimationFrame(function () { statsQueued = false; renderStats(); });
+  }
+  function sumEq(a, b) {
+    if (!a || !b) return false;
+    return Object.keys(b).every(function (k) { return a[k] === b[k]; });
+  }
+  function renderStats() {
+    if (state.view !== 'detail') return;
+    var n = 0, q = 0, buy = 0, wt = 0, pd = 0, fd = 0, pc = 0, fc = 0, rev = 0, prof = 0, profBase = 0, withFact = 0, delDelta = 0, delBoth = 0, pf = 0, pp = 0;
+    state.rows.forEach(function (r, id) {
+      var c = calcId(id);
+      n++;
+      if (num(r.pwf) != null) pf += num(r.pwf);
+      if (!(state.lay && state.lay.idx.cov[id])) {
+        var pws2 = 0;
+        (groupMembers('idx', id) || [id]).forEach(function (m2) { var c2 = calcId(m2); if (c2.w != null) pws2 += c2.w; });
+        pp += r.ov && r.ov.pwPlan != null ? r.ov.pwPlan : pws2;
+      }
+      if (c.q != null) q += c.q;
+      if (c.t != null) buy += c.t;
+      if (c.w != null) wt += c.w;
+      if (c.planDel != null) pd += c.planDel;
+      if (c.df != null) fd += c.df;
+      if (c.planDel != null && c.df != null) { delDelta += c.df - c.planDel; delBoth++; }
+      if (c.planCost != null && c.q > 0) pc += c.planCost * c.q;
+      if (c.factCost != null && c.q > 0) { fc += c.factCost * c.q; withFact++; }
+      if (c.rt != null && c.q > 0) {
+        rev += c.rt * c.q;
+        if (c.eff != null) { prof += (c.rt - c.eff) * c.q; profBase += c.rt * c.q; }
+      }
+    });
+    var cu = cur();
+    var has = n > 0;
+    $('#s-buy').textContent = has ? money(buy, '₴') : '—';
+    $('#s-buy-s').textContent = has ? n + ' поз. · ' + fmt(q).replace(/[,.]00$/, '') + ' шт · ' + fmt(wt) + ' кг' : ' ';
+    $('#s-del').textContent = has ? money(pd, '₴') : '—';
+    $('#s-del-s').textContent = has ? ('факт ' + (fd > 0 || delBoth ? money(fd, '₴') : '—') + (delBoth ? ' · ' + sgn(delDelta) + fmt(Math.abs(delDelta)) + ' ₴' : '')) : ' ';
+    $('#s-cost').textContent = has ? money(pc, '₴') : '—';
+    $('#s-cost-s').textContent = has ? ('факт ' + (withFact ? money(fc, '₴') : '—') + ' · ' + withFact + ' з ' + n + ' поз.') : ' ';
+    $('#s-rev').textContent = has ? money(rev, '₴') : '—';
+    $('#s-rev-s').textContent = has ? 'за роздрібними цінами' : ' ';
+    var pe = $('#s-profit');
+    pe.textContent = has && rev > 0 ? money(rev, '₴') : '—';
+    pe.style.color = has && rev > 0 ? 'var(--good)' : '';
+    $('#s-profit-s').textContent = has && rev > 0 ? 'роздрібна вартість × к-сть' : ' ';
+
+    function ft(id, v, on) { var e = $(id); e.textContent = on ? v : '—'; e.classList.toggle('nil', !on); }
+    ft('#f-qty', fmt(q).replace(/[,.]00$/, ''), has);
+    ft('#f-total', fmt(buy), has);
+    ft('#f-weight', fmt(wt), has);
+    ft('#f-planDel', fmt(pd), has);
+    ft('#f-factDel', fmt(fd), has && fd > 0);
+    ft('#f-planCost', fmt(pc), has);
+    ft('#f-factCost', fmt(fc), withFact > 0);
+    ft('#f-pwPlan', fmt(pp), has && pp > 0);
+    ft('#f-pwFact', fmt(pf), pf > 0);
+    ft('#f-retail', fmt(rev), has);
+
+    var m = M();
+    if (m && itemsLoaded) {
+      var sum = { n: n, qty: r2(q), wt: r2(wt), buy: r2(buy), pd: r2(pd), fd: r2(fd), pc: r2(pc), fc: r2(fc), fn: withFact, rev: r2(rev), profit: r2(prof), base: r2(profBase) };
+      if (!sumEq(m.sum, sum)) { m.sum = sum; scheduleMeta(state.pid, 900); }
+    }
+  }
+
+  /* ---------- filter / empty ---------- */
+  function applyFilter() {
+    var f = state.filter.trim().toLowerCase();
+    var trs = Array.prototype.slice.call(tbody.children);
+    if (!f) {
+      trs.forEach(function (tr) { tr.hidden = false; });
+    } else {
+      // rows joined by a merge stay together: a match shows the whole group
+      var par = {};
+      trs.forEach(function (tr) { par[tr.dataset.id] = tr.dataset.id; });
+      var find = function (x) { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+      if (state.lay) MCOLS.forEach(function (c) {
+        Object.keys(state.lay[c].cov).forEach(function (id) { par[find(id)] = find(state.lay[c].cov[id]); });
+      });
+      var hit = {};
+      trs.forEach(function (tr) {
+        var id = tr.dataset.id, e = state.eff.get(id), r = state.rows.get(id);
+        var art = ((e && e.art) || (r && r.art) || '').toLowerCase();
+        var st = ((r && r.status) || 'замовлено').toLowerCase();
+        if (art.indexOf(f) !== -1 || st.indexOf(f) !== -1) hit[find(id)] = true;
+      });
+      trs.forEach(function (tr) { tr.hidden = !hit[find(tr.dataset.id)]; });
+    }
+    renumber();
+    updateEmpty();
+  }
+  function updateEmpty() {
+    var e = $('#empty');
+    if (state.view !== 'detail') return;
+    e.hidden = !(itemsLoaded && state.rows.size === 0);
+  }
+
+  /* ---------- photo ---------- */
+  function shrink(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        var max = 360, w = img.naturalWidth, h = img.naturalHeight;
+        var s = Math.min(1, max / Math.max(w, h));
+        w = Math.max(1, Math.round(w * s)); h = Math.max(1, Math.round(h * s));
+        var c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        var x = c.getContext('2d');
+        x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, h);
+        x.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        res(c.toDataURL('image/jpeg', 0.78));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('img')); };
+      img.src = url;
+    });
+  }
+  function setPhoto(id, file) {
+    if (!file || !/^image\//.test(file.type)) { flash('Потрібен файл зображення'); return; }
+    shrink(file).then(function (data) {
+      var r = state.rows.get(id);
+      if (!r) return;
+      r.photo = data;
+      setThumb(id);
+      flushItem(state.pid, id);
+      if (r.art && r.art.trim()) syncRowToCatalog(id, true);
+      if (lbId === id) openLb(id);
+    }).catch(function () { flash('Не вдалося прочитати фото'); });
+  }
+  function openLb(id) {
+    var r = state.rows.get(id);
+    if (!r || !r.photo) return;
+    lbId = id;
+    $('#lbImg').src = r.photo;
+    $('#lbCap').textContent = r.art || 'без артикула';
+    $('#lb').hidden = false;
+    $('#lbClose').focus();
+  }
+  function closeLb() { $('#lb').hidden = true; lbId = null; }
+
+  /* ---------- CSV ---------- */
+  function csvCell(v) {
+    var s = v == null ? '' : String(v);
+    return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function cn(n) { return n == null ? '' : n.toFixed(2).replace('.', ','); }
+  function toCSV() {
+    var head = ['Артикул', 'Статус', 'К-сть', 'Сума закупки', 'Вартість за шт', 'Загальна вага, кг', 'Планова вартість доставки', 'Фактична вартість доставки', 'Планова собівартість', 'Фактична собівартість', 'Роздрібна вартість', 'Маржа, %'];
+    var lines = [head.join(';')];
+    Array.prototype.forEach.call(tbody.children, function (tr) {
+      var r = state.rows.get(tr.dataset.id);
+      if (!r) return;
+      var c = calcId(tr.dataset.id);
+      var m = c.rt != null && c.rt > 0 && c.eff != null ? ((c.rt - c.eff) / c.rt * 100).toFixed(1).replace('.', ',') : '';
+      lines.push([csvCell((state.eff.get(tr.dataset.id) || {}).art || r.art), csvCell(r.status || 'Замовлено'), c.q == null ? '' : String(c.q).replace('.', ','), cn(c.t), cn(c.unit), c.w == null ? '' : String(c.w).replace('.', ','), cn(c.planDel), cn(c.df), cn(c.planCost), cn(c.factCost), cn(c.rt), m].join(';'));
+    });
+    return '﻿' + lines.join('\r\n');
+  }
+
+  /* ---------- arm-to-confirm ---------- */
+  function confirmTap(btn, armedLabel, fn) {
+    if (btn.dataset.armed) {
+      clearTimeout(Number(btn.dataset.armed));
+      delete btn.dataset.armed;
+      btn.classList.remove('armed');
+      btn.textContent = btn.dataset.label;
+      fn();
+      return;
+    }
+    btn.dataset.label = btn.textContent;
+    btn.classList.add('armed');
+    btn.textContent = armedLabel;
+    btn.dataset.armed = String(setTimeout(function () {
+      delete btn.dataset.armed;
+      btn.classList.remove('armed');
+      btn.textContent = btn.dataset.label;
+    }, 3000));
+  }
+
+  /* ---------- events ---------- */
+  $('#createBtn').addEventListener('click', createPurchase);
+  $('#createBtn2').addEventListener('click', createPurchase);
+  $('#back').addEventListener('click', function () {
+    if (state.view === 'fin' || state.view === 'cat') { state.view = 'list'; $('#vFin').hidden = true; $('#vCat').hidden = true; $('#vList').hidden = false; setTop(); renderList(); } else closePurchase(false);
+  });
+  $('#finBtn').addEventListener('click', showFin);
+  $('#finOpen').addEventListener('click', function () { $('#finDate').value = $('#finDate').value || today(); renderFin(); $('#finModal').hidden = false; });
+  $('#finClose').addEventListener('click', function () { $('#finModal').hidden = true; });
+  $('#finModal').addEventListener('click', function (e) { if (e.target === $('#finModal')) $('#finModal').hidden = true; });
+  $('#finKind').addEventListener('change', renderFin);
+  $('#catBtn').addEventListener('click', showCat);
+  $('#catAdd').addEventListener('click', function () { openCatModal(null); });
+  $('#catQ').addEventListener('input', renderCat);
+  $('#cmCancel').addEventListener('click', closeCatModal);
+  $('#cmSave').addEventListener('click', saveCat);
+  $('#catModal').addEventListener('click', function (e) { if (e.target === $('#catModal')) closeCatModal(); });
+  $('#cmPhoto').addEventListener('click', function () { $('#cmFile').click(); });
+  $('#cmFile').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { flash('Потрібен файл зображення'); return; }
+    shrink(f).then(function (d) { catPhoto = d; paintCmPhoto(); }).catch(function () { flash('Не вдалося прочитати фото'); });
+  });
+  $('#fMonth').addEventListener('change', renderFinPage);
+  $('#finAdd').addEventListener('click', addFin);
+  $('#finAmt').addEventListener('keydown', function (e) { if (e.key === 'Enter') addFin(); });
+  $('#plFlt').addEventListener('input', function (e) { state.pfilter = e.target.value; renderList(); });
+  $('#plRows').addEventListener('click', function (e) {
+    var tr = e.target.closest('tr.plrow');
+    if (!tr) return;
+    var id = tr.dataset.id;
+    var b = e.target.closest('[data-act]');
+    var act = b ? b.getAttribute('data-act') : 'open';
+    if (act === 'pdel') confirmTap(b, 'Так', function () { deletePurchase(id); });
+    else if (act === 'cyc') cycleStatus(id);
+    else openPurchase(id, false);
+  });
+
+  $('#mName').addEventListener('input', function (e) { var m = M(); if (!m) return; m.name = e.target.value; scheduleMeta(state.pid, 500); });
+  $('#mDate').addEventListener('input', function (e) { var m = M(); if (!m) return; m.date = e.target.value; scheduleMeta(state.pid, 500); });
+  $('#mStatus').addEventListener('change', function (e) { var m = M(); if (!m) return; m.status = e.target.value; scheduleMeta(state.pid, 200); });
+  $('#mCur').addEventListener('change', function (e) {
+    var m = M(); if (!m) return;
+    m.cur = e.target.value;
+    paintCurrency();
+    scheduleStats();
+    scheduleMeta(state.pid, 300);
+  });
+  $('#mRate').addEventListener('input', function (e) {
+    var m = M(); if (!m) return;
+    m.rate = num(e.target.value);
+    recomputeAll();
+    scheduleMeta(state.pid, 500);
+  });
+  $('#mNote').addEventListener('input', function (e) { var m = M(); if (!m) return; m.note = e.target.value; scheduleMeta(state.pid, 600); });
+  $('#mAutoFin').addEventListener('change', function (e) {
+    var m = M(); if (!m) return;
+    m.autoFin = e.target.checked;
+    if (!m.autoFin && autoFinPrompt) closeAutoFinModal();
+    scheduleMeta(state.pid, 200);
+    flash(m.autoFin ? 'Автоматичний фін облік увімкнено' : 'Автоматичний фін облік вимкнено');
+  });
+  $('#mFx').addEventListener('input', function (e) {
+    var m = M(); if (!m) return;
+    m.fx = num(e.target.value);
+    recomputeAll();
+    scheduleMeta(state.pid, 500);
+  });
+  $('#mFx').addEventListener('blur', function (e) { var v = num(e.target.value); if (v != null) e.target.value = show(v); });
+  $('#mRate').addEventListener('blur', function (e) { var v = num(e.target.value); if (v != null) e.target.value = show(v); });
+
+  $('#addBtn').addEventListener('click', function () { addRow({}, true); });
+  $('#emptyAdd').addEventListener('click', function () { addRow({}, true); });
+  $('#delPBtn').addEventListener('click', function () {
+    var pid = state.pid;
+    confirmTap($('#delPBtn'), 'Видалити?', function () {
+      closePurchase(true);
+      deletePurchase(pid);
+    });
+  });
+  $('#exportBtn').addEventListener('click', function () {
+    var csvData = toCSV();
+    var pName = (M() && M().name) ? M().name.replace(/[^a-zA-Z0-9а-яА-ЯіїєґІЇЄҐ_-]/g, '_') : 'zakupka';
+    var fname = pName + '-' + today() + '.csv';
+    if (downloads && downloads.save) {
+      downloads.save({ filename: fname, data: csvData }).then(function () {
+        flash('Файл збережено');
+      }).catch(function (err) {
+        if (err && err.code === 'declined') return;
+        flash('Експорт не вдався');
+      });
+      return;
+    }
+    try {
+      var blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      flash('Файл CSV завантажено');
+    } catch (e) {
+      flash('Експорт не вдався');
+    }
+  });
+
+  tbody.addEventListener('input', function (e) {
+    var t = e.target, k = t.getAttribute && t.getAttribute('data-k');
+    var kv = t.getAttribute && t.getAttribute('data-ov');
+    if (kv) {
+      var id0 = t.closest('tr').dataset.id, r0 = state.rows.get(id0), v0 = num(t.value);
+      if (!r0) return;
+      r0.ov = r0.ov || {};
+      if (v0 == null) delete r0.ov[kv]; else r0.ov[kv] = v0;
+      r0.ov = cleanOv(r0.ov);
+      recomputeAll(); scheduleItem(id0);
+      return;
+    }
+    if (!k) return;
+    var id = t.closest('tr').dataset.id;
+    var r = state.rows.get(id);
+    if (!r) return;
+    r[k] = STRK.indexOf(k) >= 0 ? t.value : num(t.value);
+    if (k === 'status') t.setAttribute('data-st', t.value);
+    recomputeAll();
+    scheduleItem(id);
+  });
+  tbody.addEventListener('focusout', function (e) {
+    var t = e.target;
+    if (t.getAttribute && t.getAttribute('data-ov')) { recompute(t.closest('tr').dataset.id); return; }
+    var k = t.getAttribute && t.getAttribute('data-k');
+    var tr = t.closest && t.closest('tr');
+    var id = tr && tr.dataset.id;
+    if (id) {
+      if (k === 'art') {
+        autofillRow(id);
+      } else if (k === 'retail' || k === 'weight') {
+        var r = state.rows.get(id);
+        if (r && r.art && r.art.trim()) syncRowToCatalog(id, false);
+      }
+    }
+    if (!k || STRK.indexOf(k) >= 0) return;
+    var v = num(t.value);
+    if (v != null) t.value = show(v);
+    if (k === 'total') maybePromptAutoFin(id);
+  });
+  tbody.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !e.target.getAttribute || !e.target.getAttribute('data-k')) return;
+    var cell = e.target.closest('td'), tr = cell.parentNode;
+    var idx = Array.prototype.indexOf.call(tr.children, cell);
+    var next = tr.nextElementSibling;
+    while (next && (next.hidden || next.children[idx].hidden)) next = next.nextElementSibling;
+    if (next) {
+      var inp = next.children[idx].querySelector('input');
+      if (inp) { e.preventDefault(); inp.focus(); inp.select(); }
+    }
+  });
+  tbody.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b) return;
+    var id = b.closest('tr').dataset.id;
+    var act = b.getAttribute('data-act');
+    if (act === 'photo') {
+      if (e.shiftKey) return;
+      var r = state.rows.get(id);
+      if (r && r.photo) openLb(id); else refs.get(id).file.click();
+    } else if (act === 'del') {
+      confirmTap(b, 'Так', function () { deleteRow(id); });
+    }
+  });
+  tbody.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.getAttribute && t.getAttribute('data-k') === 'rcv') {
+      var id = t.closest('tr').dataset.id;
+      var topId = (state.lay && state.lay.idx && state.lay.idx.cov[id]) || id;
+      var checked = !!t.checked;
+      var members = groupMembers('idx', topId) || [topId];
+      members.forEach(function (mId) {
+        var r = state.rows.get(mId);
+        if (r) {
+          r.rcv = checked;
+          scheduleItem(mId);
+        }
+      });
+      paintRcvStatus(topId);
+    }
+    if (t.getAttribute && t.getAttribute('data-k') === 'status') {
+      var id = t.closest('tr').dataset.id;
+      var r = state.rows.get(id);
+      if (r) {
+        r.status = t.value;
+        t.setAttribute('data-st', t.value);
+        scheduleItem(id);
+      }
+    }
+    if (t.getAttribute && t.getAttribute('data-k') === 'art') autofillRow(t.closest('tr').dataset.id);
+    if (t.getAttribute && (t.getAttribute('data-k') === 'retail' || t.getAttribute('data-k') === 'weight')) {
+      var id = t.closest('tr').dataset.id;
+      var r = state.rows.get(id);
+      if (r && r.art && r.art.trim()) syncRowToCatalog(id, true);
+    }
+    if (t.getAttribute && t.getAttribute('data-act') === 'file') {
+      var f = t.files && t.files[0];
+      t.value = '';
+      if (f) setPhoto(t.closest('tr').dataset.id, f);
+    }
+  });
+  tbody.addEventListener('dragover', function (e) { if (e.target.closest('.c-photo')) e.preventDefault(); });
+  tbody.addEventListener('drop', function (e) {
+    var td = e.target.closest('.c-photo');
+    if (!td) return;
+    e.preventDefault();
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) setPhoto(td.parentNode.dataset.id, f);
+  });
+
+  $('#mergeBtn').addEventListener('click', mergeSel);
+  $('#unmergeBtn').addEventListener('click', unmergeSel);
+  $('#selClear').addEventListener('click', function () { sel = null; paintSel(); });
+  tbody.addEventListener('focusin', function (e) {
+    var td = e.target.closest ? e.target.closest('td[data-c]') : null;
+    if (!td) return;
+    anc = { col: td.getAttribute('data-c'), id: td.parentNode.dataset.id };
+    sel = null;
+    paintSel();
+  });
+  tbody.addEventListener('click', function (e) {
+    if (e.shiftKey) return;
+    var td = e.target.closest ? e.target.closest('td[data-c]') : null;
+    if (!td) return;
+    anc = { col: td.getAttribute('data-c'), id: td.parentNode.dataset.id };
+    sel = null;
+    paintSel();
+  });
+  tbody.addEventListener('mousedown', function (e) {
+    if (!e.shiftKey || !anc) return;
+    var td = e.target.closest ? e.target.closest('td[data-c]') : null;
+    if (!td || td.getAttribute('data-c') !== anc.col) return;
+    e.preventDefault();
+    sel = { col: anc.col, aId: anc.id, bId: td.parentNode.dataset.id };
+    paintSel();
+  });
+  tbody.addEventListener('keydown', function (e) {
+    if (!e.shiftKey || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || !anc) return;
+    var td = e.target.closest ? e.target.closest('td[data-c]') : null;
+    if (!td || td.getAttribute('data-c') !== anc.col) return;
+    e.preventDefault();
+    var ids = orderIds();
+    var cur = ids.indexOf(sel ? sel.bId : anc.id);
+    var nx = Math.max(0, Math.min(ids.length - 1, cur + (e.key === 'ArrowDown' ? 1 : -1)));
+    sel = { col: anc.col, aId: anc.id, bId: ids[nx] };
+    paintSel();
+  });
+  $('#lbClose').addEventListener('click', closeLb);
+  $('#lb').addEventListener('click', function (e) { if (e.target === $('#lb')) closeLb(); });
+  $('#lbReplace').addEventListener('click', function () { if (lbId && refs.get(lbId)) refs.get(lbId).file.click(); });
+  $('#lbRemove').addEventListener('click', function () {
+    var id = lbId;
+    var r = id && state.rows.get(id);
+    if (!r) return;
+    r.photo = '';
+    setThumb(id);
+    flushItem(state.pid, id);
+    closeLb();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (!$('#lb').hidden) closeLb(); else if (sel) { sel = null; paintSel(); }
+  });
+  window.addEventListener('pagehide', flushAll);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flushAll(); });
+
+  /* ---------- start ---------- */
+  function finishLoad() {
+    loaded = true;
+    $('#createBtn').disabled = false;
+    renderList();
+  }
+  function loadLocal() {
+    mode = 'local';
+    var raw = null;
+    try { raw = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { raw = null; }
+    if (raw && raw.purchases) {
+      Object.keys(raw.purchases).forEach(function (id) { state.purchases.set(id, normMeta(raw.purchases[id])); });
+    }
+    if (raw && raw.catalog) Object.keys(raw.catalog).forEach(function (id) { state.cat.set(id, normCat(raw.catalog[id], id)); });
+    localItems = (raw && raw.items) || {};
+    setStatus('local');
+    finishLoad();
+  }
+  function startDb() {
+    mode = 'db';
+    db.collection('catalog').onSnapshot(function (snap) {
+      snap.docChanges().forEach(function (ch) {
+        if (ch.type === 'removed') { state.cat.delete(ch.doc.id); return; }
+        var d = ch.doc.data(); if (d) state.cat.set(ch.doc.id, normCat(d, ch.doc.id));
+      });
+      if (state.view === 'cat') renderCat();
+    }, function () {});
+    db.collection('purchases').onSnapshot(function (snap) {
+      snap.docChanges().forEach(function (ch) {
+        var id = ch.doc.id;
+        if (ch.type === 'removed') {
+          state.purchases.delete(id);
+          if (state.view === 'detail' && state.pid === id) closePurchase(true);
+          return;
+        }
+        var d = ch.doc.data();
+        if (!d) return;
+        if (state.purchases.has(id) && timers['m:' + id]) return;
+        state.purchases.set(id, normMeta(d));
+        if (state.view === 'detail' && state.pid === id) paintMeta(true);
+      });
+      if (!loaded) { setStatus('saved', 'синхронізовано'); finishLoad(); }
+      else if (state.view === 'list') renderList();
+      else if (state.view === 'fin') renderFinPage();
+    }, function (err) {
+      setStatus('error', errText(err));
+      if (!loaded) loadLocal();
+    });
+  }
+  /* ---------- Firebase integration ---------- */
+  function parseFirebaseConfig(str) {
+    if (!str) return null;
+    if (typeof str === 'object') return str;
+    str = str.trim();
+    try { return JSON.parse(str); } catch (e) {}
+    var match = str.match(/\{[\s\S]*\}/);
+    if (match) {
+      var rawObj = match[0];
+      try { return JSON.parse(rawObj); } catch (e) {}
+      var fixed = rawObj
+        .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?\s*:/g, '"$2":')
+        .replace(/:\s*'([^']*)'/g, ':"$1"')
+        .replace(/,\s*\}/g, '}');
+      try { return JSON.parse(fixed); } catch (e) {}
+      try {
+        var fn = new Function('return ' + rawObj + ';');
+        var res = fn();
+        if (res && typeof res === 'object') return res;
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  function getSavedFirebaseConfig() {
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); } catch (e) { saved = null; }
+    if (saved && saved.apiKey && saved.projectId) return saved;
+    if (DEFAULT_FIREBASE_CONFIG && DEFAULT_FIREBASE_CONFIG.apiKey && DEFAULT_FIREBASE_CONFIG.projectId) {
+      return DEFAULT_FIREBASE_CONFIG;
+    }
+    return null;
+  }
+
+  function initFirebase() {
+    var cfg = getSavedFirebaseConfig();
+    if (!cfg || !cfg.apiKey || !cfg.projectId) {
+      db = null;
+      return false;
+    }
+    try {
+      if (typeof firebase !== 'undefined') {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(cfg);
+        }
+        db = firebase.firestore();
+        if (firebase.auth) {
+          firebase.auth().signInAnonymously().catch(function (err) {
+            console.warn('Firebase anon auth notice:', err);
+          });
+        }
+        return true;
+      } else {
+        console.warn('Firebase SDK not found');
+      }
+    } catch (err) {
+      console.error('Firebase initialization error:', err);
+      db = null;
+    }
+    return false;
+  }
+
+  function openFbModal() {
+    var cfg = getSavedFirebaseConfig();
+    var cur = null;
+    try { cur = JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); } catch (e) { cur = null; }
+    if (cur) {
+      $('#fbConfigInput').value = JSON.stringify(cur, null, 2);
+    } else if (DEFAULT_FIREBASE_CONFIG.apiKey) {
+      $('#fbConfigInput').value = JSON.stringify(DEFAULT_FIREBASE_CONFIG, null, 2);
+    } else {
+      $('#fbConfigInput').value = '';
+    }
+
+    var badge = $('#fbStatusBadge');
+    var badgeText = $('#fbStatusBadgeText');
+    var pBadge = $('#fbProjectBadge');
+
+    if (mode === 'db' && cfg && cfg.projectId) {
+      badgeText.textContent = '🟢 Підключено до Firebase Firestore';
+      pBadge.textContent = 'Проект: ' + cfg.projectId;
+      badge.style.borderColor = 'var(--good)';
+      $('#fbSyncBtn').disabled = false;
+      $('#fbDisconnectBtn').disabled = false;
+    } else {
+      badgeText.textContent = '⚪ Працює в локальному режимі';
+      pBadge.textContent = 'Хмара не підключена';
+      badge.style.borderColor = 'var(--line)';
+      $('#fbSyncBtn').disabled = true;
+      $('#fbDisconnectBtn').disabled = !cur;
+    }
+
+    $('#fbModal').hidden = false;
+  }
+
+  function closeFbModal() {
+    $('#fbModal').hidden = true;
+  }
+
+  function saveFbConfig() {
+    var raw = $('#fbConfigInput').value.trim();
+    if (!raw) {
+      flash('Вставте конфігурацію Firebase');
+      return;
+    }
+    var parsed = parseFirebaseConfig(raw);
+    if (!parsed || !parsed.apiKey || !parsed.projectId) {
+      flash('Не вдалося розпізнати: потрібні apiKey та projectId');
+      return;
+    }
+    try {
+      localStorage.setItem(CFG_KEY, JSON.stringify(parsed));
+      flash('Збережено! Підключення до бази...');
+      setTimeout(function () { location.reload(); }, 600);
+    } catch (e) {
+      flash('Не вдалося зберегти налаштування в браузері');
+    }
+  }
+
+  function disconnectFb() {
+    confirmTap($('#fbDisconnectBtn'), 'Точно?', function () {
+      localStorage.removeItem(CFG_KEY);
+      flash('Відключено. Перезавантаження...');
+      setTimeout(function () { location.reload(); }, 600);
+    });
+  }
+
+  async function syncLocalToFb() {
+    if (mode !== 'db' || !db) {
+      flash('Спочатку підключіть базу Firebase');
+      return;
+    }
+    var raw = null;
+    try { raw = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { raw = null; }
+    if (!raw || (!raw.purchases && !raw.catalog && !raw.items)) {
+      flash('У локальному сховищі немає даних для перенесення');
+      return;
+    }
+    setStatus('saving', 'перенесення в Firebase…');
+    var pCount = 0, cCount = 0, iCount = 0;
+    try {
+      var batchPromises = [];
+      if (raw.catalog) {
+        Object.keys(raw.catalog).forEach(function (id) {
+          cCount++;
+          batchPromises.push(db.collection('catalog').doc(id).set(catPayload(normCat(raw.catalog[id], id))));
+        });
+      }
+      if (raw.purchases) {
+        Object.keys(raw.purchases).forEach(function (id) {
+          pCount++;
+          batchPromises.push(db.collection('purchases').doc(id).set(metaPayload(normMeta(raw.purchases[id]))));
+        });
+      }
+      if (raw.items) {
+        Object.keys(raw.items).forEach(function (pid) {
+          var itemsObj = raw.items[pid] || {};
+          Object.keys(itemsObj).forEach(function (itemId) {
+            iCount++;
+            batchPromises.push(db.collection(itemsPath(pid)).doc(itemId).set(payload(itemsObj[itemId])));
+          });
+        });
+      }
+      await Promise.all(batchPromises);
+      setStatus('saved', 'Firebase: перенесено');
+      flash('Синхронізовано: ' + pCount + ' закупок, ' + iCount + ' поз., ' + cCount + ' товарів');
+      closeFbModal();
+    } catch (err) {
+      console.error(err);
+      setStatus('error', errText(err));
+      flash('Помилка при перенесенні: ' + (err.message || err));
+    }
+  }
+
+  $('#fbOpenBtn').addEventListener('click', openFbModal);
+  $('#status').addEventListener('click', openFbModal);
+  $('#fbClose').addEventListener('click', closeFbModal);
+  $('#fbModal').addEventListener('click', function (e) { if (e.target === $('#fbModal')) closeFbModal(); });
+  $('#fbSaveBtn').addEventListener('click', saveFbConfig);
+  $('#fbDisconnectBtn').addEventListener('click', disconnectFb);
+  $('#fbSyncBtn').addEventListener('click', syncLocalToFb);
+
+  /* ---------- Authorization (weekly expiration) ---------- */
+  var AUTH_STORAGE_KEY = 'latiao_auth_v1';
+  var AUTH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (1 week)
+  var authScreen = $('#authScreen');
+  var appEl = document.querySelector('.app');
+  var authForm = $('#authForm');
+  var authLogin = $('#authLogin');
+  var authPass = $('#authPass');
+  var authError = $('#authError');
+  var authEyeBtn = $('#authEyeBtn');
+  var logoutBtn = $('#logoutBtn');
+
+  function checkAuth() {
+    try {
+      var raw = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (!raw) return false;
+      var data = JSON.parse(raw);
+      if (!data || data.user !== 'admin' || !data.authTime) return false;
+      var age = Date.now() - Number(data.authTime);
+      if (age < 0 || age > AUTH_MAX_AGE_MS) {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function doLogin(login, pass) {
+    if (login.trim() === 'admin' && pass === 'latiao213') {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
+        user: 'admin',
+        authTime: Date.now()
+      }));
+      return true;
+    }
+    return false;
+  }
+
+  function doLogout() {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    location.reload();
+  }
+
+  if (authEyeBtn && authPass) {
+    authEyeBtn.addEventListener('click', function () {
+      var isPwd = authPass.type === 'password';
+      authPass.type = isPwd ? 'text' : 'password';
+      authEyeBtn.textContent = isPwd ? '🙈' : '👁';
+    });
+  }
+
+  if (authForm) {
+    authForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var l = (authLogin.value || '').trim();
+      var p = authPass.value || '';
+      if (doLogin(l, p)) {
+        if (authError) authError.hidden = true;
+        if (authScreen) authScreen.hidden = true;
+        if (appEl) appEl.hidden = false;
+        init();
+      } else {
+        if (authError) {
+          authError.hidden = false;
+          authError.classList.remove('shake-anim');
+          void authError.offsetWidth; // retrigger animation
+          authError.classList.add('shake-anim');
+        }
+        authPass.value = '';
+        authPass.focus();
+      }
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function () {
+      if (confirm('Ви дійсно хочете вийти з системи?')) {
+        doLogout();
+      }
+    });
+  }
+
+  var initialized = false;
+  async function init() {
+    if (initialized) return;
+    initialized = true;
+    state.lay = emptyLay();
+    paintCurrency();
+    setTop();
+    renderList();
+    try { if (window.claude && window.claude.use) downloads = await window.claude.use('downloads'); } catch (e) { downloads = null; }
+    $('#exportBtn').hidden = false;
+
+    var hasFb = initFirebase();
+    if (hasFb && db) {
+      startDb();
+    } else {
+      loadLocal();
+    }
+  }
+
+  // Check auth before starting
+  if (checkAuth()) {
+    if (authScreen) authScreen.hidden = true;
+    if (appEl) appEl.hidden = false;
+    init();
+  } else {
+    if (appEl) appEl.hidden = true;
+    if (authScreen) authScreen.hidden = false;
+    if (authLogin) setTimeout(function () { authLogin.focus(); }, 100);
+  }
+})();
+</script>
+
+</body></html>

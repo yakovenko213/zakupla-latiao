@@ -1,0 +1,45 @@
+# Облік закупок
+
+
+# Закупки
+Закупок ще немає. Створіть першу: відкриється порожня таблиця, куди вводяться дані закупки.
+
+## Новий товар
+Каталог порожній. Додайте перший товар кнопкою «Додати товар».
+За цей період записів немає. Фін записи додаються всередині закупки.
+У цій закупці ще немає позицій. Додайте рядок і введіть артикул, кількість, суму закупки та вагу.
+
+## Фін облік
+Записів ще немає. Додайте витрату на товар чи доставку, а у разі скасування позиції відмітьте повернення коштів.
+
+## 🔥 База даних Firebase
+Підключіть Firebase Firestore для синхронізації та збереження всіх закупок, товарів каталогу та фінансових записів у реальному часі.
+
+```
+firebaseConfig
+```
+
+1. Відкрийте [Firebase Console](https://console.firebase.google.com/) та створіть новий проект (або відкрийте існуючий).
+2. У лівому меню виберіть Build → Firestore Database і натисніть Create database.
+3. У вкладці Rules (Правила) дозвольте доступ на читання й запис:
+          rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+        
+4. Відкрийте Project Settings (шестерня) → General, у розділі Your apps натисніть </> (Web).
+5. Скопіюйте обʼєкт firebaseConfig і вставте у поле вище.
+[Firebase Console](https://console.firebase.google.com/)
+
+```
+rules_version = '2'; service cloud.firestore { match /databases/{database}/documents { match /{document=**} { allow read, write: if true; } } }
+```
+
+
+```
+firebaseConfig
+```
