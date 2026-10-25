@@ -41,6 +41,19 @@ body {
 button, input, select { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 [hidden] { display: none !important; }
+.flight-loader { position:fixed; top:0; left:0; right:0; z-index:10000; height:4px; overflow:hidden; pointer-events:none; background:rgba(255,255,255,.16); }
+.flight-loader-track { position:absolute; inset:0; background:linear-gradient(90deg,transparent 0%,rgba(59,130,246,.3) 35%,rgba(183,90,255,.55) 70%,transparent 100%); animation:flightGlow 1.8s ease-in-out infinite; }
+.flight-loader-plane { position:absolute; top:7px; left:-42px; width:28px; height:28px; padding:5px; border-radius:50%; color:#fff; background:var(--primary); box-shadow:0 7px 22px rgba(0,61,255,.35); animation:flightAcross 2.2s cubic-bezier(.45,0,.3,1) infinite; }
+.flight-loader-plane svg, .mini-flight svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.flight-loader.is-active { height:42px; background:transparent; }
+@keyframes flightAcross { 0%{left:-42px;transform:translateY(5px) rotate(-8deg)} 45%{transform:translateY(-2px) rotate(1deg)} 100%{left:calc(100% + 14px);transform:translateY(4px) rotate(7deg)} }
+@keyframes flightGlow { 0%,100%{transform:translateX(-45%);opacity:.35} 50%{transform:translateX(45%);opacity:1} }
+.mini-flight { display:flex; align-items:center; gap:12px; color:var(--primary); }
+.mini-flight-icon { position:relative; width:44px; height:30px; flex:0 0 auto; overflow:hidden; }
+.mini-flight-icon::after { content:""; position:absolute; left:2px; right:2px; top:15px; border-top:1px dashed #b9c7ff; }
+.mini-flight-icon svg { position:absolute; z-index:1; width:22px; height:22px; color:var(--primary); animation:miniFlight 1.5s ease-in-out infinite; }
+@keyframes miniFlight { 0%{left:-22px;top:8px;transform:rotate(-8deg)} 50%{top:2px} 100%{left:44px;top:7px;transform:rotate(7deg)} }
+@media(prefers-reduced-motion:reduce){.flight-loader-track,.flight-loader-plane,.mini-flight-icon svg{animation:none}.flight-loader-plane{left:50%}.mini-flight-icon svg{left:11px;top:4px}}
 
 /* top bar */
 .top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; min-height: 44px; }
@@ -67,6 +80,41 @@ select.ul { cursor: pointer; padding-right: 4px; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .bar .spacer { flex: 1 1 16px; }
 #plFlt, #flt { width: 240px; max-width: 100%; }
+#plMonth { width: 170px; max-width: 100%; }
+.list-filter { position: relative; display: flex; align-items: center; height: 48px; border: 1px solid var(--hairline); border-radius: 12px; background: #fff; color: var(--ink-muted); transition: border-color .15s, box-shadow .15s; }
+.list-filter:focus-within { border-color: var(--ring); box-shadow: 0 0 0 3px var(--accent-soft); }
+.list-filter > svg { position: absolute; left: 15px; width: 19px; height: 19px; pointer-events: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.list-filter .ul { height: 46px; border: 0; border-radius: 12px; outline: 0; box-shadow: none; background: transparent; padding-left: 44px; }
+.list-filter .ul:focus { border: 0; outline: 0; box-shadow: none; background: transparent; }
+.list-filter-search { width: 300px; }
+.list-filter-search #plFlt { width: 100%; }
+.list-filter-month { width: 210px; }
+.list-filter-month #plMonth { width: 100%; appearance: none; padding-right: 42px; cursor: pointer; }
+.list-filter-month .filter-chevron { left: auto; right: 14px; width: 17px; height: 17px; }
+.top-controls { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; }
+.top .status { min-height: 44px; padding: 0 15px; border: 1px solid rgba(255,255,255,.12); }
+.top-utility { display: inline-flex; align-items: center; gap: 9px; }
+.top-utility svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#fbOpenBtn { background: rgba(255,255,255,.96); }
+#logoutBtn { background: transparent; color: #fff; border-color: rgba(255,255,255,.35); }
+#logoutBtn:hover { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.7); }
+.list-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.list-action { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-width: 0; padding-inline: 20px; }
+.list-action svg { width: 19px; height: 19px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.list-action.primary svg { stroke-width: 2.2; }
+.list-action:not(.primary):hover svg { color: var(--primary); }
+@media (max-width: 720px) {
+  #vList > .bar { align-items: stretch; }
+  .list-filter-search, .list-filter-month { width: 100%; }
+  #plFlt, #plMonth { width: 100%; }
+  #vList > .bar .spacer { display: none; }
+  .list-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .list-action { width: 100%; padding-inline: 12px; font-size: 14px; }
+  .list-action.primary { grid-column: 1 / -1; }
+  .top-controls { width: 100%; margin-left: 0; flex-wrap: wrap; }
+  .top-controls .status { flex: 1 1 100%; }
+  .top-utility { flex: 1; }
+}
 
 /* tables */
 .tablewrap { border-top: 3px solid var(--fg); overflow-x: auto; }
@@ -173,6 +221,11 @@ table.ft { table-layout: auto; }
 .ft td { padding: 8px 10px; vertical-align: middle; }
 .ft thead th { white-space: nowrap; }
 .ft .x { height: 28px; padding: 0 10px; }
+.fin-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.fin-pager-info { min-width: 150px; text-align: center; color: var(--muted); font-size: 12px; font-weight: 700; }
+.fin-article-stats { margin-top: 24px; }
+.fin-article-stats h2 { margin: 0 0 10px; font-size: 18px; font-weight: 800; text-transform: uppercase; }
+.fin-article-stats .tablewrap { max-height: 360px; overflow: auto; }
 /* ===== Theme: Algolia-style (black gradient hero, white canvas, hairline cards, Sora + Inter) ===== */
 :root { --primary: #003dff; --primary-hover: #1e59ff; --violet: #b75aff; --ring: #3b82f6; --ink: #23263b; --ink-muted: #484c7a; --caption-muted: #9698c3; --surface-1: #f2f2f2; --hairline: #e5e7eb;
   --bg: #ffffff; --card: #ffffff; --fg: #23263b; --muted: #6b6f9a; --line: #e5e7eb; --accent: #003dff; --accent-soft: #eef2ff; --calc: #f7f7f8; --hover: #f7f7f8; --good: #14804a; --bad: #c93b3b;
@@ -198,6 +251,55 @@ h1 { font-size: clamp(34px, 6vw, 64px); font-weight: 700; line-height: 1.02; let
 .meta { padding: 20px 24px; }
 .notes, .fin { padding: 24px; }
 .stats { padding: 8px 24px; }
+#vDetail > div { gap: 20px !important; }
+#vDetail .nameIn { height: 70px; padding-inline: 24px; border-radius: 12px; font-size: clamp(24px,2.2vw,34px); }
+#vDetail .meta { display: grid; grid-template-columns: repeat(14,minmax(0,1fr)); gap: 20px 16px; padding: 24px; align-items: end; }
+#vDetail .meta > .mf { min-width: 0; gap: 7px; }
+#vDetail .meta > .mf:nth-child(1) { grid-column: span 2; }
+#vDetail .meta > .mf:nth-child(2) { grid-column: span 2; }
+#vDetail .meta > .mf:nth-child(3) { grid-column: span 2; }
+#vDetail .meta > .mf:nth-child(4) { grid-column: span 2; }
+#vDetail .meta > .mf:nth-child(5) { grid-column: span 2; }
+#vDetail .meta > .auto-fin-toggle { grid-column: span 4; justify-content: initial; }
+#vDetail .meta > .mf:last-child { grid-column: 1 / -1; }
+#vDetail .meta .ul, #vDetail .meta select.ul { width: 100% !important; max-width: none; }
+#vDetail .meta textarea.ul { min-height: 96px; padding: 14px 16px; line-height: 1.5; resize: vertical; }
+#vDetail .auto-fin-toggle .switch-row { height: 52px; padding: 0 14px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface-1); }
+#vDetail .stats { grid-template-columns: repeat(4,minmax(0,1fr)); padding: 10px; gap: 0; border-radius: 14px; }
+#vDetail .stat, #vDetail .stat:first-child { padding: 20px 22px; border-left: 1px solid var(--hairline); }
+#vDetail .stat:first-child { border-left: 0; }
+#vDetail .stat .big { font-size: clamp(26px,2.3vw,38px); }
+#vDetail .toolbar { display: grid; grid-template-columns: minmax(260px,1fr) auto; gap: 14px 20px; align-items: center; padding: 14px 16px; margin: 0; border: 1px solid var(--hairline); border-radius: 14px; background: #fff; }
+#vDetail .toolbar .hint { min-width: 0; line-height: 1.45; }
+#vDetail .toolbar .spacer { display: none; }
+#vDetail .toolbar .actions { justify-content: flex-end; flex-wrap: nowrap; }
+#vDetail .toolbar .actions .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding-inline: 18px; }
+#vDetail .toolbar .actions svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#vDetail .toolbar .btn.danger { color: var(--bad); }
+#vDetail .toolbar .btn.danger:hover { border-color: #f3c7c7; background: #fff3f3; color: var(--bad); }
+#vDetail .selbar { grid-column: 1 / -1; padding-bottom: 12px; border-bottom: 1px solid var(--hairline); }
+@media (max-width: 1200px) {
+  #vDetail .meta { grid-template-columns: repeat(6,minmax(0,1fr)); }
+  #vDetail .meta > .mf:nth-child(-n+5) { grid-column: span 2; }
+  #vDetail .meta > .auto-fin-toggle { grid-column: span 2; }
+  #vDetail .stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #vDetail .stat:nth-of-type(3) { border-left: 0; border-top: 1px solid var(--hairline); }
+  #vDetail .stat:nth-of-type(5) { border-top: 1px solid var(--hairline); }
+  #vDetail .toolbar { grid-template-columns: 1fr; }
+  #vDetail .toolbar .actions { justify-content: flex-start; flex-wrap: wrap; }
+}
+@media (max-width: 680px) {
+  #vDetail .nameIn { height: 58px; padding-inline: 16px; }
+  #vDetail .meta { grid-template-columns: 1fr; padding: 16px; }
+  #vDetail .meta > .mf:nth-child(-n+5), #vDetail .meta > .auto-fin-toggle, #vDetail .meta > .mf:last-child { grid-column: 1; }
+  #vDetail .stats { display: grid; grid-template-columns: 1fr; overflow: visible; }
+  #vDetail .stat, #vDetail .stat:first-child, #vDetail .stat:nth-of-type(3), #vDetail .stat:nth-of-type(5) { border-left: 0; border-top: 1px solid var(--hairline); }
+  #vDetail .stat:first-child { border-top: 0; }
+  #vDetail .toolbar { padding: 12px; }
+  #vDetail .toolbar .actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  #vDetail .toolbar .actions .btn { width: 100%; padding-inline: 10px; font-size: 14px; }
+  #vDetail .toolbar .actions #addBtn { grid-column: 1 / -1; order: -1; }
+}
 .fin .tablewrap { border-radius: 12px; }
 .nameIn { height: 56px; border: 1px solid var(--hairline); border-radius: 8px; background: #fff; box-shadow: none; padding: 0 16px; font-size: 28px; font-weight: 700; letter-spacing: -0.03em; text-transform: none; color: var(--ink); }
 .nameIn:focus { border-color: var(--ring); background: #fff; }
@@ -220,11 +322,18 @@ tfoot td.lbl { text-transform: uppercase; letter-spacing: 0.04em; font-size: 12p
 .open { font-weight: 700; color: var(--ink); }
 .open:hover { color: var(--primary); }
 .tag { border-radius: 6px; text-transform: none; letter-spacing: 0; }
-.st { border-radius: 9999px; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 400; background: #fff; border-color: var(--hairline); }
-.st:hover { border-color: var(--ink-muted); }
-.st i { background: var(--caption-muted); }
-.st-transit i { background: #d99a1d; }
-.st-received i { background: var(--good); }
+.st { min-width: 118px; height: 36px; justify-content: flex-start; border-radius: 9999px; padding: 0 13px; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 500; border-color: transparent; transition: transform .15s, box-shadow .15s, border-color .15s; }
+.st:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(35,38,59,.09); }
+.st i { width: 9px; height: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px rgba(107,111,154,.12); }
+.st-planned { color: #656a9b; background: #f4f5fb; border-color: #e3e5f1; }
+.st-purchased { color: #003dff; background: #eef2ff; border-color: #d9e2ff; }
+.st-transit { color: #a86600; background: #fff6e6; border-color: #f5dfb8; }
+.st-received { color: var(--good); background: #eaf7f0; border-color: #cbe8d8; }
+#mStatus { font-weight: 600; transition: background .15s,border-color .15s,color .15s; }
+#mStatus[data-status="planned"] { color: #656a9b; background: #f4f5fb; border-color: #e3e5f1; }
+#mStatus[data-status="purchased"] { color: #003dff; background: #eef2ff; border-color: #d9e2ff; }
+#mStatus[data-status="transit"] { color: #a86600; background: #fff6e6; border-color: #f5dfb8; }
+#mStatus[data-status="received"] { color: var(--good); background: #eaf7f0; border-color: #cbe8d8; }
 .selText { text-transform: none; letter-spacing: 0; }
 td.sel { box-shadow: inset 0 0 0 2px var(--ring); }
 td.mgd { box-shadow: inset 3px 0 0 var(--ring); }
@@ -244,6 +353,37 @@ a, .lnk { color: var(--primary); }
 .mbox .ul { width: 100%; box-sizing: border-box; }
 .mrow { display: flex; gap: 12px; } .mrow > * { flex: 1; }
 .cmphoto { width: 96px; height: 96px; border: 1px dashed var(--caption-muted); border-radius: 12px; background: var(--surface-1); cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--ink-muted); padding: 0; font: inherit; }
+#catModal { background: rgba(18,20,32,.58); backdrop-filter: blur(5px); }
+.cat-modal-box { width: min(760px, 100%); padding: 0; gap: 0; border: 0; border-radius: 20px; box-shadow: 0 28px 90px rgba(20,24,45,.28); overflow: hidden; }
+.cat-modal-head { padding: 28px 32px 22px; border-bottom: 1px solid var(--hairline); }
+.cat-modal-head h2 { font-size: 28px; color: var(--ink); }
+.cat-modal-body { display: grid; grid-template-columns: 168px minmax(0,1fr); gap: 28px; padding: 28px 32px 30px; }
+.cat-photo-field { display: flex; flex-direction: column; gap: 10px; }
+.cat-photo-field > span { font-size: 12px; color: var(--ink-muted); }
+.cat-modal-box .cmphoto { width: 168px; height: 168px; border-color: #aeb8e8; border-radius: 16px; background: linear-gradient(145deg,#f8f9ff,#eef2ff); color: var(--primary); font-family: var(--head); font-weight: 600; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.cat-modal-box .cmphoto:hover { border-color: var(--primary); box-shadow: 0 0 0 4px var(--accent-soft); transform: translateY(-1px); }
+.cat-modal-box .cmphoto img { border-radius: 15px; }
+.cat-fields { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.cat-fields .mf { gap: 7px; }
+.cat-fields .ul { height: 52px; font-size: 17px; }
+.cat-price-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
+.cat-price-grid .mf > span { min-height: 34px; line-height: 1.4; }
+.cat-price-grid .ul { text-align: right; }
+.cat-modal-actions { padding: 20px 32px 26px; border-top: 1px solid var(--hairline); background: #fafafe; }
+.cat-modal-actions .btn { min-width: 132px; }
+@media (max-width: 680px) {
+  #catModal { padding: 10px; align-items: flex-end; }
+  .cat-modal-box { width: 100%; max-height: calc(100dvh - 20px); border-radius: 18px; }
+  .cat-modal-head { padding: 22px 20px 18px; }
+  .cat-modal-head h2 { font-size: 24px; }
+  .cat-modal-body { grid-template-columns: 1fr; gap: 22px; padding: 22px 20px; }
+  .cat-photo-field { align-items: flex-start; }
+  .cat-modal-box .cmphoto { width: 128px; height: 128px; }
+  .cat-price-grid { grid-template-columns: 1fr; }
+  .cat-price-grid .mf > span { min-height: 0; }
+  .cat-modal-actions { padding: 16px 20px calc(18px + env(safe-area-inset-bottom,0px)); }
+  .cat-modal-actions .btn { flex: 1; min-width: 0; }
+}
 /* Column tinting with status column added */
 table:has(#rows) th:nth-child(11), table:has(#rows) th:nth-child(12), #rows td:nth-child(11), #rows td:nth-child(12), table:has(#rows) tfoot td:nth-child(10), table:has(#rows) tfoot td:nth-child(11) { background: #edf3ff; }
 table:has(#rows) th:nth-child(13), table:has(#rows) th:nth-child(14), #rows td:nth-child(13), #rows td:nth-child(14), table:has(#rows) tfoot td:nth-child(12), table:has(#rows) tfoot td:nth-child(13) { background: #eaf6ef; }
@@ -356,20 +496,27 @@ table:has(#rows) th:nth-child(15), table:has(#rows) th:nth-child(16), #rows td:n
   font-weight: 500;
   padding: 8px 12px;
 }
-.c-rcv { text-align: center; vertical-align: middle; padding: 0 2px; }
-.chk-rcv-wrap { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 4px; }
-.chk-rcv { appearance: none; -webkit-appearance: none; width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; display: inline-grid; place-content: center; transition: all 0.12s ease; margin: 0; }
-.chk-rcv:hover { border-color: var(--good); }
-.chk-rcv:checked { background: var(--good); border-color: var(--good); }
-.chk-rcv:checked::before { content: ""; width: 9px; height: 5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translate(1px, -1px); }
-.c-rcv.rcv, td.idx.rcv { background: #daf0e2 !important; }
-td.idx.rcv { color: var(--good); font-weight: 800; }
-td.idx.rcv small { color: #086130 !important; }
-#grid tbody tr.row-rcv td:not(.calc):not(.sel) { background-color: #f0f9f3 !important; }
-#grid tbody tr.row-rcv td.calc:not(.sel) { background-color: #e3f5ea !important; }
-#grid tbody tr.row-rcv td.c-rcv, #grid tbody tr.row-rcv td.idx { background-color: #daf0e2 !important; }
-#grid tbody tr.row-rcv:hover td:not(.sel):not(.calc) { background-color: #e4f6eb !important; }
-#grid tbody tr.row-rcv:hover td:not(.sel).calc { background-color: #d7efe0 !important; }
+.c-rcv, .c-sent { text-align: center; vertical-align: top !important; padding: 8px 5px !important; }
+.chk-rcv-wrap { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.parcel-check { width: 100%; }
+.parcel-check span { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 34px; padding: 5px 7px; border: 1px solid #b8bec8; border-radius: 8px; background: #fff; color: #4d5561; font-size: 11px; line-height: 1.15; font-weight: 700; white-space: normal; box-sizing: border-box; box-shadow: 0 1px 3px rgba(35,38,59,.08); transition: .15s ease; }
+.parcel-check:hover span { border-color: var(--primary); color: var(--primary); background: #f4f7ff; }
+.parcel-check input { position: absolute; opacity: 0; pointer-events: none; }
+.parcel-check input:focus-visible + span { outline: 3px solid var(--ring); outline-offset: 2px; }
+.parcel-check input:checked + span { border-color: var(--primary); background: var(--primary); color: #fff; }
+.parcel-check input:checked + span::before { content: "✓"; margin-right: 4px; font-size: 13px; }
+.chk-rcv, .chk-sent { appearance: none; -webkit-appearance: none; width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; display: inline-grid; place-content: center; transition: all 0.12s ease; margin: 0; }
+.chk-rcv:hover, .chk-sent:hover { border-color: var(--primary); }
+.chk-rcv:checked, .chk-sent:checked { background: var(--primary); border-color: var(--primary); }
+.chk-rcv:checked::before, .chk-sent:checked::before { content: ""; width: 9px; height: 5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translate(1px, -1px); }
+.c-sent.sent { background: #e8f0ff !important; }
+.c-rcv.rcv, td.idx.rcv { background: #d4d6da !important; }
+td.idx.rcv { color: #555b65; font-weight: 800; }
+td.idx.rcv small { color: #6b7078 !important; }
+#grid tbody tr.row-rcv td:not(.sel) { background-color: #eceeef !important; color: #6b7078; }
+#grid tbody tr.row-rcv td.calc:not(.sel) { background-color: #e2e4e6 !important; }
+#grid tbody tr.row-rcv td.c-rcv, #grid tbody tr.row-rcv td.idx { background-color: #d4d6da !important; }
+#grid tbody tr.row-rcv:hover td:not(.sel) { background-color: #e1e3e5 !important; }
 .in.note { text-align: left; }
 #mNote { width: 100%; box-sizing: border-box; min-height: 84px; max-height: 45vh; field-sizing: content; }
 
@@ -433,6 +580,7 @@ td.idx.rcv small { color: #086130 !important; }
 
 /* ===== Ширини колонок ===== */
 .col-parcel   { width: 90px;  min-width: 90px;  }   /* Посилка */
+.col-sent     { width: 104px; min-width: 104px; }   /* Відправлена в Україну */
 .col-received { width: 80px;  min-width: 80px;  }   /* Отримана */
 .col-sku      { width: 140px; min-width: 140px; }   /* Артикул */
 .col-photo    { width: 130px; min-width: 130px; }   /* Фото */
@@ -526,7 +674,7 @@ td.idx.rcv small { color: #086130 !important; }
   background: #fff;
 }
 .table-wrap tr.row-rcv td.idx {
-  background-color: #daf0e2 !important;
+  background-color: #d4d6da !important;
 }
 
 /* ===== Адаптив ===== */
@@ -620,27 +768,28 @@ td.idx.rcv small { color: #086130 !important; }
   #grid tbody td:nth-child(14)::before { content: "Собівартість · факт, ₴/шт"; }
   #grid tbody td:nth-child(15)::before { content: "Вага посилки · план, кг"; }
   #grid tbody td:nth-child(16)::before { content: "Вага посилки · факт, кг"; }
-  #grid tbody td:nth-child(17)::before { content: "Роздріб, ₴/шт"; }
-  #grid tbody td:nth-child(18)::before { content: "Коментар"; }
+  #grid tbody td:nth-child(17)::before { content: "Собівартість за вагою, ₴/шт"; }
+  #grid tbody td:nth-child(18)::before { content: "Роздріб, ₴/шт"; }
+  #grid tbody td:nth-child(19)::before { content: "Коментар"; }
   #grid tbody td:nth-child(1),
   #grid tbody td:nth-child(3),
   #grid tbody td:nth-child(5),
   #grid tbody td:nth-child(10),
-  #grid tbody td:nth-child(18),
-  #grid tbody td:nth-child(19) { grid-column: 1 / -1; border-right: 0; }
+  #grid tbody td:nth-child(19),
+  #grid tbody td:nth-child(20) { grid-column: 1 / -1; border-right: 0; }
   #grid tbody td:nth-child(1) { min-height: 48px; flex-direction: row; align-items: center; justify-content: space-between; color: var(--primary); font-size: 16px; }
   #grid tbody td:nth-child(1)::before { margin: 0; }
   #grid tbody td:nth-child(2) { align-items: flex-start; }
   #grid tbody td:nth-child(4) { align-items: flex-start; }
-  #grid tbody td:nth-child(19) { align-items: stretch; padding: 8px 12px; border-bottom: 0; }
-  #grid tbody td:nth-child(19)::before { content: none; }
-  #grid tbody td:nth-child(19) .del { width: 100%; height: 44px; border: 1px solid #f1caca; border-radius: 8px; color: var(--bad); }
+  #grid tbody td:nth-child(20) { align-items: stretch; padding: 8px 12px; border-bottom: 0; }
+  #grid tbody td:nth-child(20)::before { content: none; }
+  #grid tbody td:nth-child(20) .del { width: 100%; height: 44px; border: 1px solid #f1caca; border-radius: 8px; color: var(--bad); }
   #grid .in, .table-wrap .status-sel { min-height: 46px; padding: 8px 10px; border: 1px solid var(--hairline); border-radius: 8px; background-color: #fff; font-size: 16px; text-align: left; }
   #grid .in.numin { text-align: left; }
   #grid .calc .in { background: #f7f7f8; }
   #grid .sub { margin-top: 3px; padding: 0; text-align: left; }
   #grid .thumb, #grid .thumb img { width: 72px; height: 72px; margin: 0; }
-  #grid .chk-rcv { width: 30px; height: 30px; }
+  #grid .chk-rcv, #grid .chk-sent { width: 30px; height: 30px; }
 
   #grid tfoot { display: block; margin-top: 12px; padding: 12px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--surface-1); }
   #grid tfoot tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
@@ -648,7 +797,7 @@ td.idx.rcv small { color: #086130 !important; }
   #grid tfoot td.lbl { display: block; grid-column: 1 / -1; padding: 0 0 4px; font-size: 15px; }
   #grid tfoot td:has(> #f-qty), #grid tfoot td:has(> #f-total), #grid tfoot td:has(> #f-weight),
   #grid tfoot td:has(> #f-planDel), #grid tfoot td:has(> #f-factDel), #grid tfoot td:has(> #f-planCost),
-  #grid tfoot td:has(> #f-factCost), #grid tfoot td:has(> #f-pwPlan), #grid tfoot td:has(> #f-pwFact), #grid tfoot td:has(> #f-retail) { display: block; }
+  #grid tfoot td:has(> #f-factCost), #grid tfoot td:has(> #f-pwPlan), #grid tfoot td:has(> #f-pwFact), #grid tfoot td:has(> #f-weightCost), #grid tfoot td:has(> #f-retail) { display: block; }
   #grid tfoot td::before { display: block; margin-bottom: 2px; color: var(--ink-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
   #grid tfoot td:has(> #f-qty)::before { content: "Кількість"; }
   #grid tfoot td:has(> #f-total)::before { content: "Закупка"; }
@@ -659,6 +808,7 @@ td.idx.rcv small { color: #086130 !important; }
   #grid tfoot td:has(> #f-factCost)::before { content: "Собівартість · факт"; }
   #grid tfoot td:has(> #f-pwPlan)::before { content: "Вага посилки · план"; }
   #grid tfoot td:has(> #f-pwFact)::before { content: "Вага посилки · факт"; }
+  #grid tfoot td:has(> #f-weightCost)::before { content: "Собівартість за вагою"; }
   #grid tfoot td:has(> #f-retail)::before { content: "Продажі"; }
 }
 
@@ -689,6 +839,7 @@ td.idx.rcv small { color: #086130 !important; }
   }
   #grid .col-parcel { width: 62px !important; min-width: 62px; }
   #grid .col-received { width: 58px !important; min-width: 58px; }
+  #grid .col-sent { width: 72px !important; min-width: 72px; }
   #grid .col-sku { width: 100px !important; min-width: 100px; }
   #grid .col-photo { width: 66px !important; min-width: 66px; }
   #grid .col-status { width: 112px !important; min-width: 112px; }
@@ -892,9 +1043,58 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
   color: #94a3b8;
   margin-top: -2px;
 }
+/* Authorization theme aligned with the main application */
+.auth-wrap {
+  isolation: isolate;
+  overflow: hidden;
+  background: radial-gradient(70% 80% at 0% 100%,rgba(30,89,255,.78) 0%,transparent 62%), radial-gradient(65% 75% at 100% 100%,rgba(183,90,255,.6) 0%,transparent 62%), #050507;
+  font-family: var(--sans);
+}
+.auth-wrap::before { content:""; position:absolute; inset:0; z-index:-1; opacity:.12; background-image:linear-gradient(rgba(255,255,255,.16) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.16) 1px,transparent 1px); background-size:48px 48px; mask-image:linear-gradient(to bottom,transparent,black 35%,black); }
+.auth-wrap::after { content:""; position:absolute; width:520px; height:520px; right:-150px; top:-220px; z-index:-1; border-radius:50%; background:rgba(183,90,255,.17); filter:blur(70px); }
+.auth-card { width:min(480px,100%); padding:40px; gap:20px; border:1px solid rgba(255,255,255,.18); border-radius:24px; box-shadow:0 30px 90px rgba(0,0,0,.42); }
+.auth-badge { gap:8px; padding:7px 12px; background:var(--accent-soft); color:var(--primary); font-size:11px; }
+.auth-badge::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--primary); box-shadow:0 0 0 4px rgba(0,61,255,.1); }
+.auth-title { font:700 34px/1.08 var(--head); letter-spacing:-.04em; color:var(--ink); }
+.auth-desc { margin:-8px 0 4px; font-size:15px; color:var(--ink-muted); }
+.auth-form { gap:18px; }
+.auth-field { gap:8px; color:var(--ink-muted); font-size:12px; font-weight:600; }
+.auth-input-wrap { position:relative; display:flex; align-items:center; }
+.auth-input-icon { position:absolute; left:16px; width:19px; height:19px; z-index:1; fill:none; stroke:var(--caption-muted); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
+.auth-input { height:52px; padding:0 16px 0 46px; border:1px solid var(--hairline); border-radius:12px; background:#fff; color:var(--ink); font-size:16px; font-weight:400; }
+.auth-input:hover { border-color:#cdd0de; }
+.auth-input:focus { border-color:var(--ring); background:#fff; box-shadow:0 0 0 3px var(--accent-soft); }
+.auth-pwd-wrap .auth-input { padding-left:46px; padding-right:52px; }
+.auth-eye-btn { right:10px; width:34px; height:34px; border-radius:9px; color:var(--ink-muted); }
+.auth-eye-btn:hover { background:var(--accent-soft); color:var(--primary); }
+.auth-eye-btn svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.auth-eye-btn .eye-closed, .auth-eye-btn.is-visible .eye-open { display:none; }
+.auth-eye-btn.is-visible .eye-closed { display:block; }
+.auth-err { padding:12px 14px; border-radius:12px; font-weight:500; }
+.auth-err svg { width:19px; height:19px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.auth-submit { height:52px; gap:9px; margin-top:2px; border-radius:999px; font-family:var(--head); font-size:16px; font-weight:600; letter-spacing:0; }
+.auth-submit svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:transform .15s; }
+.auth-submit:hover svg { transform:translateX(3px); }
+.auth-footer { display:flex; align-items:center; justify-content:center; gap:7px; color:var(--caption-muted); font-size:12px; }
+.auth-footer svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+@media(max-width:560px){.auth-wrap{padding:12px;align-items:flex-end}.auth-card{padding:28px 22px 24px;border-radius:22px}.auth-title{font-size:29px}.auth-desc br{display:none}}
+</style>
+<style>
+  #autoModal{padding:24px;background:rgba(20,24,45,.58);backdrop-filter:blur(4px)}
+  .auto-modal-box{width:min(1440px,calc(100vw - 48px));height:min(920px,calc(100vh - 48px));max-height:none;padding:0;gap:0;overflow:hidden;border-radius:20px;box-shadow:0 24px 80px rgba(20,24,45,.24)}
+  .auto-modal-head{display:flex;align-items:center;gap:16px;min-height:76px;padding:0 28px;border-bottom:1px solid var(--hairline);background:#fff;flex:0 0 auto}.auto-modal-head h2{font-size:28px}.auto-modal-head .spacer{flex:1}.auto-modal-content{padding:24px 28px 32px;overflow:auto;background:#f7f7f8}
+  .auto-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}.auto-card{min-width:0;border:1px solid var(--hairline);border-radius:16px;padding:20px;background:#fff;box-shadow:0 1px 2px rgba(20,24,45,.03)}.auto-card h3{margin:0 0 16px;font:700 20px/1.2 var(--head);letter-spacing:-.02em}.auto-card label{display:block;margin:12px 0 6px;font-size:13px;font-weight:600;color:var(--ink)}.auto-card textarea,.auto-card input:not([type=checkbox]),.auto-card select{width:100%;box-sizing:border-box}.auto-card input[type=checkbox]{width:18px;height:18px;margin:0 8px 0 0;vertical-align:-4px;accent-color:var(--primary)}.auto-card small{display:block;margin-top:8px;color:var(--muted);line-height:1.45}.auto-card input[type=file]{height:auto;min-height:44px;padding:9px 12px}.auto-card input[type=file]::file-selector-button{border:0;border-radius:999px;padding:8px 13px;margin-right:10px;background:var(--accent-soft);color:var(--primary);font-weight:600;cursor:pointer}
+  .auto-params{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px}.auto-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.auto-actions .btn{flex:1 1 auto}.auto-mask{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:1px}.auto-warn{color:#9a5700!important}.auto-results{margin-top:20px}.auto-plan{padding:24px}.auto-plan>h3{font-size:24px}.auto-parcel{margin-top:18px!important;padding:20px!important;border-color:#dfe2eb!important;box-shadow:none}.auto-parcel>h3{display:flex;align-items:center;margin-bottom:16px;font-size:20px}.auto-parcel>h3:before{content:"";width:9px;height:9px;margin-right:10px;border-radius:50%;background:var(--primary)}
+  .auto-kpis{display:grid!important;grid-template-columns:repeat(6,minmax(145px,1fr))!important;gap:0;padding:0!important;overflow:hidden;border:1px solid var(--hairline)!important;border-radius:12px!important}.auto-kpis>div{display:flex;flex-direction:column;gap:6px;min-width:0;padding:14px 16px;border-left:1px solid var(--hairline)}.auto-kpis>div:first-child{border-left:0}.auto-kpis small{margin:0;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted)}.auto-kpis b{font-size:17px;line-height:1.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+  .auto-parcel .tablewrap{margin-top:14px;border-radius:12px}.auto-plan-table{width:100%;min-width:1080px;table-layout:auto}.auto-plan-table th{white-space:normal;line-height:1.2;vertical-align:bottom}.auto-plan-table th:not(:first-child),.auto-plan-table td:not(:first-child){text-align:right}.auto-plan-table td{padding:11px 10px;white-space:nowrap;font-variant-numeric:tabular-nums}.auto-plan-table tbody tr:hover td{background:var(--accent-soft)}.auto-plan-table td:nth-last-child(2){font-weight:700;color:var(--primary)}.auto-summary{display:flex;flex-wrap:wrap;gap:10px 24px;margin:22px 0 8px;padding:18px 20px;border-radius:12px;background:var(--ink);color:#fff}.auto-summary span{white-space:nowrap}.auto-plan-note{color:var(--muted);margin:14px 0}.auto-plan>#autoPreview{min-width:220px}
+  .auto-parcel-choice{display:inline-flex!important;align-items:center;gap:10px;margin:0!important;cursor:pointer}.auto-parcel-choice input{width:20px!important;height:20px!important;margin:0!important;accent-color:var(--primary)}.auto-commit-box{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-top:20px;padding:20px;border:1px solid var(--hairline);border-radius:16px;background:var(--surface-1)}.auto-commit-box>label{display:flex;flex:1 1 360px;max-width:620px;flex-direction:column;gap:7px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted)}.auto-commit-box select{width:100%}.auto-commit-actions{display:flex;gap:10px;flex-wrap:wrap}.auto-commit-actions .btn{display:inline-flex;align-items:center;justify-content:center;min-width:180px}
+  @media(max-width:1100px){.auto-grid{grid-template-columns:1fr 1fr}.auto-grid .auto-card:last-child{grid-column:1/-1}.auto-kpis{grid-template-columns:repeat(3,1fr)!important}.auto-kpis>div:nth-child(4){border-left:0;border-top:1px solid var(--hairline)}.auto-kpis>div:nth-child(n+5){border-top:1px solid var(--hairline)}}
+  @media(max-width:720px){#autoModal{padding:0;align-items:stretch}.auto-modal-box{width:100%;height:100%;border:0;border-radius:0}.auto-modal-head{min-height:64px;padding:0 16px}.auto-modal-head h2{font-size:22px}.auto-modal-head .btn{height:38px;padding:0 16px}.auto-modal-content{padding:14px}.auto-grid{grid-template-columns:1fr}.auto-grid .auto-card:last-child{grid-column:auto}.auto-card,.auto-plan{padding:16px}.auto-params{grid-template-columns:1fr 1fr}.auto-actions{flex-direction:column}.auto-actions .btn,.auto-plan>#autoPreview{width:100%}.auto-kpis{grid-template-columns:1fr 1fr!important}.auto-kpis>div{border-top:1px solid var(--hairline)}.auto-kpis>div:nth-child(odd){border-left:0}.auto-kpis>div:nth-child(-n+2){border-top:0}.auto-summary{display:block}.auto-summary span{display:block;margin:6px 0}.auto-commit-box{align-items:stretch;flex-direction:column;padding:16px}.auto-commit-box>label{flex-basis:auto;max-width:none}.auto-commit-actions{display:grid;grid-template-columns:1fr}.auto-commit-actions .btn{width:100%;min-width:0}}
 </style>
 </head>
 <body>
+
+<div class="flight-loader is-active" id="flightLoader" hidden aria-hidden="true"><div class="flight-loader-track"></div><div class="flight-loader-plane"><svg viewBox="0 0 24 24"><path d="m3 11 18-7-7 17-3-7zM11 14l4-4"/></svg></div></div>
 
 <!-- AUTH SCREEN -->
 <div id="authScreen" class="auth-wrap" hidden>
@@ -906,27 +1106,28 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
     <form id="authForm" class="auth-form" autocomplete="on">
       <label class="auth-field">
         <span>Логін</span>
-        <input class="auth-input" id="authLogin" type="text" autocomplete="username" placeholder="admin" required autofocus>
+        <div class="auth-input-wrap"><svg class="auth-input-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5 20c.7-4 3-6 7-6s6.3 2 7 6"/></svg><input class="auth-input" id="authLogin" type="text" autocomplete="username" placeholder="Введіть логін" required autofocus></div>
       </label>
 
       <label class="auth-field">
         <span>Пароль</span>
-        <div class="auth-pwd-wrap">
+        <div class="auth-input-wrap auth-pwd-wrap">
+          <svg class="auth-input-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
           <input class="auth-input" id="authPass" type="password" autocomplete="current-password" placeholder="••••••••" required>
-          <button type="button" class="auth-eye-btn" id="authEyeBtn" title="Показати/приховати пароль" aria-label="Показати пароль">👁</button>
+          <button type="button" class="auth-eye-btn" id="authEyeBtn" title="Показати/приховати пароль" aria-label="Показати пароль"><svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.5"/></svg><svg class="eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 16 16M10.6 6.2A9 9 0 0 1 12 6c6 0 9.5 6 9.5 6a15 15 0 0 1-2.1 2.8M6.2 6.5C3.8 8.2 2.5 12 2.5 12s3.5 6 9.5 6a9 9 0 0 0 2.1-.2"/></svg></button>
         </div>
       </label>
 
       <div id="authError" class="auth-err" hidden>
-        <span>⚠️</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.8 20h18.4zM12 9v5M12 17.5v.1"/></svg>
         <span id="authErrorMsg">Невірний логін або пароль</span>
       </div>
 
-      <button type="submit" class="btn primary auth-submit" id="authSubmitBtn">Увійти в систему</button>
+      <button type="submit" class="btn primary auth-submit" id="authSubmitBtn"><span>Увійти в систему</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5"/></svg></button>
     </form>
 
     <div class="auth-footer">
-      🔒 Захищений доступ · Авторизація 1 раз на тиждень
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Захищений доступ · Авторизація раз на тиждень</span>
     </div>
   </div>
 </div>
@@ -935,21 +1136,25 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
   <div class="top">
     <button class="btn" id="back" type="button" hidden>← Усі закупки</button>
     <h1 id="h1">Закупки</h1>
-    <div style="display:inline-flex;align-items:center;gap:10px;margin-left:auto">
+    <div class="top-controls">
       <div class="status" id="status" data-k="connecting" style="cursor:pointer" title="Натисніть для налаштування бази даних"><i></i><span id="statusText">підключення…</span></div>
-      <button class="btn" id="fbOpenBtn" type="button" title="Налаштування Firebase">🔥 Firebase</button>
-      <button class="btn" id="logoutBtn" type="button" title="Вийти з облікового запису">Вийти</button>
+      <button class="btn top-utility" id="fbOpenBtn" type="button" title="Налаштування Firebase"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18.5V8l4-3v13.5M9 8l5-4v14.5M14 9l5-3v12.5M3 19h18"/></svg><span>Firebase</span></button>
+      <button class="btn top-utility" id="logoutBtn" type="button" title="Вийти з облікового запису"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10"/></svg><span>Вийти</span></button>
     </div>
   </div>
 
   <!-- LIST -->
   <section id="vList" aria-label="Список закупок">
     <div class="bar" style="margin-bottom: 14px">
-      <input class="ul" id="plFlt" type="search" placeholder="Пошук за назвою закупки" autocomplete="off" aria-label="Пошук за назвою закупки">
+      <div class="list-filter list-filter-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input class="ul" id="plFlt" type="search" placeholder="Пошук за назвою закупки" autocomplete="off" aria-label="Пошук за назвою закупки"></div>
+      <div class="list-filter list-filter-month"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v3M19 4v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12H4V7a1 1 0 0 1 1-1z"/></svg><select class="ul" id="plMonth" aria-label="Місяць закупок"></select><svg class="filter-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></div>
       <span class="spacer"></span>
-      <button class="btn" id="catBtn" type="button">Каталог товарів</button>
-      <button class="btn" id="finBtn" type="button">Фін облік</button>
-      <button class="btn primary" id="createBtn" type="button" disabled>+ Створити закупку</button>
+      <div class="list-actions">
+        <button class="btn list-action" id="catBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>Каталог товарів</span></button>
+        <button class="btn list-action" id="finBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v11H4zM4 9.5h16M16 14h2M7 5h10"/></svg><span>Фін облік</span></button>
+        <button class="btn list-action" id="autoBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 4 .7 2.1L17.5 7l-2.3.9-.7 2.1-.8-2.1L11.5 7l2.2-.9zM6 13l1 2.8 3 1.2-3 1.2L6 21l-1-2.8L2 17l3-1.2zM18.5 12l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg><span>Автозакупка</span></button>
+        <button class="btn primary list-action" id="createBtn" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Створити закупку</span></button>
+      </div>
     </div>
     <div class="tablewrap">
       <table id="plist">
@@ -965,25 +1170,43 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
         <tbody id="plRows"></tbody>
       </table>
       <div class="empty" id="plEmpty" hidden>
+        <div class="mini-flight" id="plLoading" hidden><span class="mini-flight-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 18-7-7 17-3-7zM11 14l4-4"/></svg></span><span>Завантажуємо закупки…</span></div>
         <p id="plEmptyText">Закупок ще немає. Створіть першу: відкриється порожня таблиця, куди вводяться дані закупки.</p>
         <button class="btn primary" id="createBtn2" type="button">+ Створити закупку</button>
       </div>
     </div>
   </section>
 
+  <div class="modal" id="autoModal" hidden><div class="mbox auto-modal-box" role="dialog" aria-modal="true" aria-labelledby="autoTitle">
+    <div class="auto-modal-head"><h2 id="autoTitle">Автозакупка</h2><span class="spacer"></span><button class="btn" id="autoClose" type="button">Закрити</button></div><div class="auto-modal-content">
+    <div class="auto-grid">
+      <section class="auto-card"><h3>Джерела</h3><label for="autoFiles">Файли Google-таблиць</label><input class="ul" id="autoFiles" type="file" accept=".xlsx,.xls,.csv" multiple><small>ШІ прочитає всі вкладки Excel-файлу. Результат аналізу збережеться локально лише у цьому браузері.</small><label><input id="autoInternal" type="checkbox" checked> Брати дані також із таблиць, що вже є в системі</label><div class="auto-actions"><button class="btn primary" id="autoUpload" type="button">Проаналізувати через ШІ</button><button class="btn" id="autoRead" type="button">Прочитати локальні дані</button></div><small id="autoSourceStatus"></small></section>
+      <section class="auto-card"><h3>Токен ChatGPT</h3><label for="autoToken">API-ключ OpenAI</label><input class="ul auto-mask" id="autoToken" type="password" autocomplete="off" placeholder="sk-…"><label for="autoModel">Модель</label><select class="ul" id="autoModel"><option value="gpt-5-mini">GPT-5 mini</option><option value="gpt-5">GPT-5</option><option value="gpt-4.1-mini">GPT-4.1 mini</option></select><button class="btn" id="autoSaveToken" type="button">Зберегти на цьому ПК</button><small class="auto-warn">Ключ зберігається у локальному сховищі браузера. Не використовуйте цей режим на чужому ПК.</small></section>
+      <section class="auto-card"><h3>Нова закупка</h3><label for="autoOrder">Артикул — кількість</label><textarea class="ul" id="autoOrder" rows="6" placeholder="3250 - 40 шт"></textarea><div class="auto-params"><label>Тариф, $/кг<input class="ul" id="autoTariff" value="16"></label><label>Курс, грн<input class="ul" id="autoRate" value="47"></label><label>Доплата, $<input class="ul" id="autoSurcharge" value="2"></label><label>Ліміт, кг<input class="ul" id="autoLimit" value="9"></label><label>Коробка ≤50<input class="ul" id="autoBoxS" value="0,2"></label><label>Коробка ≤150<input class="ul" id="autoBoxM" value="0,3"></label><label>Коробка &gt;150<input class="ul" id="autoBoxL" value="0,4"></label></div><button class="btn primary" id="autoCalculate" type="button">Розрахувати</button></section>
+    </div><section class="auto-results" id="autoResults" hidden></section></div>
+  </div></div>
+
   <!-- CATALOG -->
   <div class="modal" id="catModal" hidden>
-    <div class="mbox" role="dialog" aria-modal="true" aria-labelledby="cmTitle">
-      <h2 id="cmTitle">Новий товар</h2>
-      <button class="cmphoto" id="cmPhoto" type="button" aria-label="Фото товару">+ Фото</button>
-      <input id="cmFile" type="file" accept="image/*" hidden>
-      <label class="mf"><span>Назва</span><input class="ul" id="cmName" type="text" autocomplete="off"></label>
-      <label class="mf"><span>Артикул</span><input class="ul" id="cmArt" type="text" autocomplete="off"></label>
-      <div class="mrow">
-        <label class="mf"><span>Роздрібна вартість, ₴</span><input class="ul num" id="cmPrice" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
-        <label class="mf"><span>Середня вага 1 шт, кг</span><input class="ul num" id="cmWeight" type="text" inputmode="decimal" placeholder="додамо пізніше" autocomplete="off"></label>
+    <div class="mbox cat-modal-box" role="dialog" aria-modal="true" aria-labelledby="cmTitle">
+      <div class="cat-modal-head"><h2 id="cmTitle">Новий товар</h2></div>
+      <div class="cat-modal-body">
+        <div class="cat-photo-field">
+          <button class="cmphoto" id="cmPhoto" type="button" aria-label="Завантажити фото товару">+ Фото</button>
+          <span>Натисніть, щоб змінити фото</span>
+          <input id="cmFile" type="file" accept="image/*" hidden>
+        </div>
+        <div class="cat-fields">
+          <label class="mf"><span>Назва</span><input class="ul" id="cmName" type="text" autocomplete="off"></label>
+          <label class="mf"><span>Артикул</span><input class="ul" id="cmArt" type="text" autocomplete="off"></label>
+          <div class="cat-price-grid">
+            <label class="mf"><span>Роздрібна вартість, ₴</span><input class="ul num" id="cmPrice" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
+            <label class="mf"><span>Середня закупівельна ціна, ₴</span><input class="ul num" id="cmPurchasePrice" type="text" inputmode="decimal" placeholder="автоматично" autocomplete="off"></label>
+            <label class="mf"><span>Середня вага 1 пачки, кг</span><input class="ul num" id="cmWeight" type="text" inputmode="decimal" placeholder="автоматично із закупок" autocomplete="off" readonly></label>
+          </div>
+        </div>
       </div>
-      <div class="mact"><button class="btn" id="cmCancel" type="button">Скасувати</button><button class="btn primary" id="cmSave" type="button">Зберегти</button></div>
+      <div class="mact cat-modal-actions"><button class="btn" id="cmCancel" type="button">Скасувати</button><button class="btn primary" id="cmSave" type="button">Зберегти</button></div>
     </div>
   </div>
   <section id="vCat" hidden aria-label="Каталог товарів">
@@ -992,7 +1215,7 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
       <button class="btn primary" id="catAdd" type="button">+ Додати товар</button>
     </div>
     <div class="tablewrap">
-      <table class="ft"><thead><tr><th>Фото</th><th>Артикул</th><th>Назва</th><th class="num">Роздрібна, ₴</th><th class="num">Вага 1 шт, кг</th><th></th></tr></thead><tbody id="catRows"></tbody></table>
+      <table class="ft"><thead><tr><th>Фото</th><th>Артикул</th><th>Назва</th><th class="num">Роздрібна, ₴</th><th class="num">Середня закупівельна ціна пачки, ₴</th><th class="num">Середня вага 1 пачки, кг</th><th></th></tr></thead><tbody id="catRows"></tbody></table>
       <div class="empty" id="catEmpty" hidden><p>Каталог порожній. Додайте перший товар кнопкою «Додати товар».</p></div>
     </div>
   </section>
@@ -1000,13 +1223,22 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
   <!-- FINANCE (all purchases) -->
   <section id="vFin" hidden aria-label="Фін облік">
     <div class="bar" style="margin-bottom: 14px">
-      <label class="mf"><span>Місяць</span><select class="ul" id="fMonth"></select></label>
+      <label class="mf"><span>Період</span><select class="ul" id="fPeriodType"><option value="all">Увесь час</option><option value="month">За місяць</option><option value="week">За тиждень</option><option value="day">За день</option></select></label>
+      <label class="mf" id="fPeriodBox" hidden><span id="fPeriodLabel">Період</span><input class="ul" id="fPeriodValue" type="month"></label>
     </div>
     <div class="kpis" id="fgKpis" style="margin-bottom: 14px"></div>
     <div class="tablewrap">
       <table class="ft"><thead><tr><th>Дата</th><th>Закупка</th><th>Тип</th><th>Позиція</th><th>Нотатка</th><th class="num">Сума</th></tr></thead><tbody id="fgRows"></tbody></table>
       <div class="empty" id="fgEmpty" hidden><p>За цей період записів немає. Фін записи додаються всередині закупки.</p></div>
     </div>
+    <div class="fin-pager" id="fgPager">
+      <label class="mf"><span>На сторінці</span><select class="ul" id="fgPageSize"><option>10</option><option selected>20</option><option>50</option></select></label>
+      <button class="btn" id="fgPrev" type="button">← Назад</button><span class="fin-pager-info" id="fgPageInfo"></span><button class="btn" id="fgNext" type="button">Далі →</button>
+    </div>
+    <section class="fin-article-stats" aria-labelledby="fgArticleTitle">
+      <h2 id="fgArticleTitle">Витрати за артикулами</h2>
+      <div class="tablewrap"><table class="ft"><thead><tr><th>Артикул</th><th class="num">Кількість операцій</th><th class="num">Загальна сума витрат</th></tr></thead><tbody id="fgArticleRows"></tbody></table><div class="empty" id="fgArticleEmpty" hidden><p>За цей період витрат із зазначеним артикулом немає.</p></div></div>
+    </section>
   </section>
 
   <!-- PURCHASE -->
@@ -1016,7 +1248,7 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
       <div class="meta">
         <label class="mf" for="mDate"><span>Дата</span><input class="ul" id="mDate" type="date"></label>
         <label class="mf" for="mStatus"><span>Статус</span>
-          <select class="ul" id="mStatus"><option value="planned">Планується</option><option value="transit">В дорозі</option><option value="received">Отримано</option></select>
+          <select class="ul" id="mStatus" data-status="planned"><option value="planned">Планується</option><option value="purchased">Закупка</option><option value="transit">В дорозі</option><option value="received">Отримано</option></select>
         </label>
         <label class="mf" for="mCur"><span>Валюта доставки</span>
           <select class="ul" id="mCur" style="width: 90px"><option value="$">$ долар</option><option value="€">€ євро</option><option value="₴">₴ гривня</option></select>
@@ -1045,10 +1277,10 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
         <span class="hint" id="mergeHint">Обʼєднання клітинок: клік по клітинці, потім Shift + клік по іншій у тому самому стовпці</span>
         <span class="spacer"></span>
         <div class="actions">
-          <button class="btn" id="exportBtn" type="button">Експорт CSV</button>
-          <button class="btn" id="delPBtn" type="button">Видалити закупку</button>
-          <button class="btn" id="finOpen" type="button">Фін облік</button>
-          <button class="btn primary" id="addBtn" type="button">+ Додати рядок</button>
+          <button class="btn" id="exportBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 11l4 4 4-4M5 19h14"/></svg><span>Експорт CSV</span></button>
+          <button class="btn danger" id="delPBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg><span>Видалити</span></button>
+          <button class="btn" id="finOpen" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v11H4zM4 9.5h16M16 14h2M7 5h10"/></svg><span>Фін облік</span></button>
+          <button class="btn primary" id="addBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Додати рядок</span></button>
         </div>
       </div>
 
@@ -1056,6 +1288,7 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
         <table id="grid">
           <colgroup>
             <col class="col-parcel" style="width:90px">
+            <col class="col-sent" style="width:104px">
             <col class="col-received" style="width:80px">
             <col class="col-sku" style="width:140px">
             <col class="col-photo" style="width:130px">
@@ -1071,6 +1304,7 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
             <col class="col-money" style="width:150px">
             <col class="col-wparcel" style="width:150px">
             <col class="col-wparcel" style="width:150px">
+            <col class="col-money" style="width:170px">
             <col class="col-retail" style="width:140px">
             <col class="col-comment" style="width:220px">
             <col class="col-actions" style="width:48px">
@@ -1078,6 +1312,7 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
           <thead>
             <tr>
               <th class="col-parcel col-text">Посилка<span class="m">№ · обʼєднайте рядки</span></th>
+              <th class="col-sent" style="text-align:center;">В Україну<span class="m"><b>✓ відправлено</b></span></th>
               <th class="col-received" style="text-align:center;">Отримана<span class="m"><b>✓ факт</b></span></th>
               <th class="col-sku col-text">Артикул<span class="m"><b>ввід</b></span></th>
               <th class="col-photo" style="text-align:center;">Фото<span class="m"><b>ввід</b></span></th>
@@ -1093,6 +1328,7 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
               <th class="col-money num">Фактична собівартість<span class="m">авто · ₴/шт</span></th>
               <th class="col-wparcel num">Планова вага посилки<span class="m"><b>ввід</b> · кг</span></th>
               <th class="col-wparcel num">Фактична вага посилки<span class="m"><b>ввід</b> · кг</span></th>
+              <th class="col-money num">Собівартість за вагою<span class="m">авто · факт доставки · ₴/шт</span></th>
               <th class="col-retail num">Роздрібна вартість<span class="m"><b>ввід</b> · ₴/шт</span></th>
               <th class="col-comment col-text">Коментар<span class="m"><b>ввід</b></span></th>
               <th class="col-actions"></th>
@@ -1101,7 +1337,7 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
           <tbody id="rows"></tbody>
           <tfoot>
             <tr>
-              <td class="lbl" colspan="2">Разом</td>
+              <td class="lbl" colspan="3">Разом</td>
               <td class="f-sku"></td>
               <td class="f-photo"></td>
               <td></td>
@@ -1116,6 +1352,7 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
               <td><div class="v" id="f-factCost">—</div><div class="sub">× к-сть</div></td>
               <td><div class="v" id="f-pwPlan">—</div><div class="sub">кг</div></td>
               <td><div class="v" id="f-pwFact">—</div><div class="sub">кг</div></td>
+              <td><div class="v" id="f-weightCost">—</div><div class="sub">× к-сть</div></td>
               <td><div class="v" id="f-retail">—</div><div class="sub">× к-сть</div></td>
               <td></td>
               <td></td>
@@ -1240,6 +1477,8 @@ service cloud.firestore {
   </div>
 </div>
 
+<script src="autopurchase-core.js?v=20261021-3"></script>
+<script src="autopurchase-ui.js?v=20261022-11"></script>
 <script>
 (function () {
   'use strict';
@@ -1259,12 +1498,12 @@ service cloud.firestore {
     appId: "1:451581472261:web:90756d983ad0d77dbe366c"
   };
 
-  var STATUS_LABEL = { planned: 'Планується', transit: 'В дорозі', received: 'Отримано' };
-  var STATUS_NEXT = { planned: 'transit', transit: 'received', received: 'planned' };
+  var STATUS_LABEL = { planned: 'Планується', purchased: 'Закупка', transit: 'В дорозі', received: 'Отримано' };
+  var STATUS_NEXT = { planned: 'purchased', purchased: 'transit', transit: 'received', received: 'planned' };
   var $ = function (s) { return document.querySelector(s); };
   var tbody = $('#rows');
 
-  var state = { cat: new Map(), purchases: new Map(), view: 'list', pid: null, rows: new Map(), filter: '', pfilter: '', eff: new Map(), lay: null };
+  var state = { cat: new Map(), purchases: new Map(), view: 'list', pid: null, rows: new Map(), filter: '', pfilter: '', pmonth: today().slice(0, 7), finPage: 1, eff: new Map(), lay: null };
   var refs = new Map();
   var timers = {};
   var chain = {};
@@ -1278,11 +1517,13 @@ service cloud.firestore {
   var lbId = null;
 
   /* ---------- helpers ---------- */
-  var nf, nf1;
+  var nf, nf1, nf3;
   try { nf = new Intl.NumberFormat('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (e) { nf = null; }
   try { nf1 = new Intl.NumberFormat('uk-UA', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); } catch (e) { nf1 = null; }
+  try { nf3 = new Intl.NumberFormat('uk-UA', { minimumFractionDigits: 3, maximumFractionDigits: 3 }); } catch (e) { nf3 = null; }
   function fmt(n) { return nf ? nf.format(n) : n.toFixed(2); }
   function fmt1(n) { return nf1 ? nf1.format(n) : n.toFixed(1); }
+  function fmt3(n) { return nf3 ? nf3.format(n) : n.toFixed(3); }
   function num(v) {
     if (v == null || v === '') return null;
     if (typeof v === 'number') return isFinite(v) ? v : null;
@@ -1330,6 +1571,7 @@ service cloud.firestore {
     var txt = t || defaultText;
     statusBase = { k: k, t: txt };
     paintStatus(k, txt);
+    $('#flightLoader').hidden = k !== 'connecting' && k !== 'saving';
   }
   function flash(t) {
     paintStatus('saving', t);
@@ -1373,7 +1615,7 @@ service cloud.firestore {
 
   /* ---------- persistence ---------- */
   function payload(r) {
-    return { art: r.art || '', photo: r.photo || '', status: r.status || 'Замовлено', qty: num(r.qty), total: num(r.total), weight: num(r.weight), delFact: num(r.delFact), retail: num(r.retail), ts: r.ts, mg: cleanMg(r.mg), ov: cleanOv(r.ov), note: r.note || '', ttn: r.ttn || '', pwf: num(r.pwf), rcv: !!r.rcv };
+    return { art: r.art || '', photo: r.photo || '', status: r.status || 'Замовлено', qty: num(r.qty), total: num(r.total), weight: num(r.weight), delFact: num(r.delFact), retail: num(r.retail), ts: r.ts, mg: cleanMg(r.mg), ov: cleanOv(r.ov), note: r.note || '', ttn: r.ttn || '', pwf: num(r.pwf), sentUa: !!r.sentUa, rcv: !!r.rcv };
   }
   function metaPayload(m) {
     return { name: m.name || '', date: m.date || '', status: STATUS_LABEL[m.status] ? m.status : 'planned', cur: m.cur || '$', rate: num(m.rate), ts: m.ts, ex: !!m.ex, sum: m.sum || null, fin: cleanFin(m.fin), fx: num(m.fx), note: m.note || '', autoFin: m.autoFin !== false };
@@ -1483,24 +1725,49 @@ service cloud.firestore {
     td.appendChild(d); tr.appendChild(td);
     return tr;
   }
+  function monthLabel(key) {
+    var m = /^(\d{4})-(\d{2})$/.exec(key || '');
+    return m ? MONTHS[Number(m[2]) - 1] + ' ' + m[1] : key;
+  }
+  function renderPurchaseMonths() {
+    var select = $('#plMonth');
+    var keys = {};
+    keys[today().slice(0, 7)] = true;
+    state.purchases.forEach(function (m) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(m.date || '')) keys[m.date.slice(0, 7)] = true;
+    });
+    if (state.pmonth) keys[state.pmonth] = true;
+    var months = Object.keys(keys).sort().reverse();
+    select.textContent = '';
+    months.forEach(function (key) {
+      var option = document.createElement('option');
+      option.value = key;
+      option.textContent = monthLabel(key);
+      select.appendChild(option);
+    });
+    select.value = state.pmonth;
+  }
   function renderList() {
     var box = $('#plRows');
     box.textContent = '';
+    renderPurchaseMonths();
     var f = state.pfilter.trim().toLowerCase();
     var arr = Array.from(state.purchases.entries()).sort(function (a, b) { return b[1].ts - a[1].ts; });
     var n = 0;
     arr.forEach(function (e) {
+      if ((e[1].date || '').slice(0, 7) !== state.pmonth) return;
       if (f && (e[1].name || '').toLowerCase().indexOf(f) === -1) return;
       n++;
       box.appendChild(buildListRow(e[0], e[1], n));
     });
     var empty = $('#plEmpty');
-    if (!loaded) { empty.hidden = false; $('#plEmptyText').textContent = 'Завантаження списку…'; $('#createBtn2').hidden = true; return; }
+    if (!loaded) { empty.hidden = false; $('#plLoading').hidden = false; $('#plEmptyText').hidden = true; $('#createBtn2').hidden = true; return; }
+    $('#plLoading').hidden = true; $('#plEmptyText').hidden = false;
     $('#createBtn2').hidden = state.purchases.size !== 0;
     empty.hidden = n !== 0;
     $('#plEmptyText').textContent = state.purchases.size === 0
       ? 'Закупок ще немає. Створіть першу: відкриється порожня таблиця, куди вводяться дані закупки.'
-      : 'За цим запитом закупок не знайдено.';
+      : (f ? 'За цим запитом у вибраному місяці закупок не знайдено.' : 'У вибраному місяці закупок немає. Оберіть інший місяць або створіть нову закупку.');
   }
   function createPurchase() {
     var id = mode === 'db' ? db.collection('purchases').doc().id : uid();
@@ -1531,15 +1798,85 @@ service cloud.firestore {
 
   /* ---------- purchase screen ---------- */
   /* ---------- catalog ---------- */
-  var catEdit = null, catPhoto = '';
-  function normCat(d, id) { return { id: id, art: String(d.art || ''), name: String(d.name || ''), photo: d.photo || '', price: num(d.price), weight: num(d.weight), ts: Number(d.ts) || Date.now() }; }
-  function catPayload(c) { return { art: c.art, name: c.name, photo: c.photo || '', price: c.price == null ? null : c.price, weight: c.weight == null ? null : c.weight, ts: c.ts }; }
+  var catEdit = null, catPhoto = '', catPurchaseAvg = {}, catWeightAvg = {}, catAveragesReady = false, catAverageRun = 0;
+  function normCat(d, id) { return { id: id, art: String(d.art || ''), name: String(d.name || ''), photo: d.photo || '', price: num(d.price), purchasePrice: num(d.purchasePrice), weight: num(d.weight), ts: Number(d.ts) || Date.now() }; }
+  function catPayload(c) { return { art: c.art, name: c.name, photo: c.photo || '', price: c.price == null ? null : c.price, purchasePrice: c.purchasePrice == null ? null : c.purchasePrice, weight: c.weight == null ? null : c.weight, ts: c.ts }; }
   function catFind(a) {
-    a = (a || '').trim().toLowerCase();
+    function comparable(v) { return String(v == null ? '' : v).replace(/[\u00a0\s]/g, '').replace(/^[\'"`]+/, '').replace(/\.0+$/, '').toLowerCase(); }
+    a = comparable(a);
     if (!a) return null;
     var f = null;
-    state.cat.forEach(function (c) { if (!f && c.art.trim().toLowerCase() === a) f = c; });
+    state.cat.forEach(function (c) { if (!f && comparable(c.art) === a) f = c; });
     return f;
+  }
+  function effectivePurchasePrice(c) {
+    if (!c) return null;
+    if (c.purchasePrice != null) return c.purchasePrice;
+    var a = catPurchaseAvg[(c.art || '').trim().toLowerCase()];
+    return a == null ? null : a;
+  }
+  function effectiveCatalogWeight(c) {
+    if (!c) return null;
+    var a = catWeightAvg[(c.art || '').trim().toLowerCase()];
+    return a == null ? (catAveragesReady ? null : c.weight) : a;
+  }
+  window.autopurchaseCatalogPurchasePrice = function (article) { return effectivePurchasePrice(catFind(article)); };
+  window.autopurchaseLookupArticle = function (article) {
+    var c = catFind(String(article == null ? '' : article));
+    if (!c) return null;
+    var key = (c.art || '').trim().toLowerCase();
+    var price = effectivePurchasePrice(c);
+    var weight = catWeightAvg[key];
+    if (weight == null || !(weight > 0)) weight = c.weight;
+    return {
+      article:c.art,
+      price:price == null ? null : price,
+      weight:weight == null ? null : weight,
+      catalog:true,
+      purchaseAverage:catPurchaseAvg[key] == null ? null : catPurchaseAvg[key],
+      weightAverage:catWeightAvg[key] == null ? null : catWeightAvg[key]
+    };
+  };
+  window.autopurchaseRefreshData = function () { return refreshCatalogPurchaseAverages(); };
+  function refreshCatalogPurchaseAverages() {
+    var run = ++catAverageRun;
+    function finish(groups) {
+      if (run !== catAverageRun) return;
+      var nextPrice = {}, nextWeight = {};
+      Object.keys(groups).forEach(function (key) {
+        var g = groups[key];
+        if (g.priceQty > 0) nextPrice[key] = g.total / g.priceQty;
+        if (g.weightQty > 0) nextWeight[key] = g.weight / g.weightQty;
+      });
+      catPurchaseAvg = nextPrice;
+      catWeightAvg = nextWeight;
+      catAveragesReady = true;
+      if (!$('#catModal').hidden && catEdit) {
+        var edited = state.cat.get(catEdit), editedWeight = effectiveCatalogWeight(edited);
+        $('#cmWeight').value = editedWeight == null ? '' : show(Math.round(editedWeight * 1000) / 1000);
+      }
+      if (state.view === 'cat') renderCat();
+    }
+    function collect(groups, r) {
+      var key = String((r && r.art) || '').trim().toLowerCase(), q = num(r && r.qty);
+      if (!key || !(q > 0)) return;
+      var total = num(r && r.total), weight = num(r && r.weight);
+      var g = groups[key] || (groups[key] = { total:0, priceQty:0, weight:0, weightQty:0 });
+      if (total != null) { g.total += total; g.priceQty += q; }
+      if (weight != null && weight > 0) { g.weight += weight; g.weightQty += q; }
+    }
+    var groups = {};
+    if (mode === 'local') {
+      Object.keys(localItems).forEach(function (pid) { Object.keys(localItems[pid] || {}).forEach(function (id) { collect(groups, localItems[pid][id]); }); });
+      finish(groups); return Promise.resolve();
+    }
+    if (!db) return Promise.resolve();
+    var reads = [];
+    state.purchases.forEach(function (_, pid) { reads.push(db.collection(itemsPath(pid)).get()); });
+    return Promise.all(reads).then(function (sets) {
+      sets.forEach(function (snap) { snap.forEach(function (doc) { collect(groups, doc.data()); }); });
+      finish(groups);
+    }).catch(function () {});
   }
   function flushCat(id) {
     if (mode === 'local') { localSave(); return; }
@@ -1563,7 +1900,10 @@ service cloud.firestore {
       td.appendChild(th); tr.appendChild(td);
       tr.appendChild(el('td', '', c.art || '—')); tr.appendChild(el('td', '', c.name || '—'));
       tr.appendChild(el('td', 'num', c.price == null ? '—' : money(c.price, '₴')));
-      tr.appendChild(el('td', 'num', c.weight == null ? '—' : fmt(c.weight)));
+      var purchasePrice = effectivePurchasePrice(c);
+      tr.appendChild(el('td', 'num', purchasePrice == null ? '—' : money(purchasePrice, '₴') + (c.purchasePrice == null ? ' · авто' : '')));
+      var averageWeight = effectiveCatalogWeight(c);
+      tr.appendChild(el('td', 'num', averageWeight == null ? '—' : fmt3(averageWeight) + (catWeightAvg[(c.art || '').trim().toLowerCase()] == null ? '' : ' · авто')));
       var ta = el('td', 'act'), eb = el('button', 'btn x', 'Змінити'), db2 = el('button', 'btn x', '×');
       eb.type = db2.type = 'button'; db2.title = 'Видалити товар';
       eb.addEventListener('click', function () { openCatModal(c.id); });
@@ -1582,7 +1922,10 @@ service cloud.firestore {
     var c = (id && state.cat.get(id)) || {};
     $('#cmTitle').textContent = id ? 'Редагувати товар' : 'Новий товар';
     $('#cmName').value = c.name || ''; $('#cmArt').value = c.art || '';
-    $('#cmPrice').value = c.price == null ? '' : show(c.price); $('#cmWeight').value = c.weight == null ? '' : show(c.weight);
+    $('#cmPrice').value = c.price == null ? '' : show(c.price);
+    $('#cmPurchasePrice').value = c.purchasePrice == null ? (effectivePurchasePrice(c) == null ? '' : show(effectivePurchasePrice(c))) : show(c.purchasePrice);
+    var averageWeight = effectiveCatalogWeight(c);
+    $('#cmWeight').value = averageWeight == null ? '' : show(Math.round(averageWeight * 1000) / 1000);
     catPhoto = c.photo || ''; paintCmPhoto();
     $('#catModal').hidden = false; $('#cmArt').focus();
   }
@@ -1593,13 +1936,13 @@ service cloud.firestore {
     var dup = catFind(art);
     if (dup && dup.id !== catEdit) { flash('Такий артикул уже є в каталозі'); return; }
     var id = catEdit || (mode === 'db' ? db.collection('catalog').doc().id : uid()), old = state.cat.get(id) || {};
-    state.cat.set(id, { id: id, art: art, name: $('#cmName').value.trim(), photo: catPhoto, price: num($('#cmPrice').value), weight: num($('#cmWeight').value), ts: old.ts || Date.now() });
+    state.cat.set(id, { id: id, art: art, name: $('#cmName').value.trim(), photo: catPhoto, price: num($('#cmPrice').value), purchasePrice: num($('#cmPurchasePrice').value), weight: effectiveCatalogWeight({ art: art, weight: old.weight }), ts: old.ts || Date.now() });
     flushCat(id); closeCatModal(); renderCat();
   }
   function showCat() {
     state.view = 'cat';
     $('#vList').hidden = true; $('#vCat').hidden = false;
-    setTop(); renderCat();
+    setTop(); renderCat(); refreshCatalogPurchaseAverages();
   }
   function syncRowToCatalog(id, notify) {
     var r = state.rows.get(id);
@@ -1618,7 +1961,6 @@ service cloud.firestore {
       var changed = false;
       if (r.photo && r.photo !== existing.photo) { existing.photo = r.photo; changed = true; }
       if (r.retail != null && r.retail !== existing.price) { existing.price = r.retail; changed = true; }
-      if (unitWeight != null && unitWeight !== existing.weight) { existing.weight = unitWeight; changed = true; }
       if (changed) {
         flushCat(existing.id);
         if (state.view === 'cat') renderCat();
@@ -1663,9 +2005,9 @@ service cloud.firestore {
         r.retail = c.price;
         changed = true;
       }
-      var q = num(r.qty);
-      if (c.weight != null && q > 0 && (r.weight == null || r.weight === 0) && r.weight !== c.weight * q) {
-        r.weight = c.weight * q;
+      var q = num(r.qty), catalogWeight = effectiveCatalogWeight(c);
+      if (catalogWeight != null && q > 0 && (r.weight == null || r.weight === 0) && r.weight !== catalogWeight * q) {
+        r.weight = catalogWeight * q;
         changed = true;
       }
       if (changed) {
@@ -1988,20 +2330,44 @@ service cloud.firestore {
       else flash('Не вдалося передати у загальний фін облік');
     });
   });
+  function isoWeekKey(date) {
+    var p = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
+    if (!p) return '';
+    var d = new Date(Date.UTC(+p[1], +p[2] - 1, +p[3]));
+    var day = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - day);
+    var year = d.getUTCFullYear();
+    var start = new Date(Date.UTC(year, 0, 1));
+    var week = Math.ceil((((d - start) / 86400000) + 1) / 7);
+    return year + '-W' + ('0' + week).slice(-2);
+  }
+  function currentWeekKey() { return isoWeekKey(today()); }
+  function syncFinPeriodControl(setDefault) {
+    var type = $('#fPeriodType').value, box = $('#fPeriodBox'), input = $('#fPeriodValue');
+    box.hidden = type === 'all';
+    if (type === 'all') { input.value = ''; return; }
+    input.type = type === 'day' ? 'date' : type;
+    $('#fPeriodLabel').textContent = type === 'day' ? 'День' : type === 'week' ? 'Тиждень' : 'Місяць';
+    if (setDefault || !input.value) input.value = type === 'day' ? today() : type === 'week' ? currentWeekKey() : today().slice(0, 7);
+  }
+  function finMatchesPeriod(e) {
+    var type = $('#fPeriodType').value, value = $('#fPeriodValue').value, date = e.d || '';
+    if (type === 'all' || !value) return true;
+    if (type === 'day') return date === value;
+    if (type === 'week') return isoWeekKey(date) === value;
+    return date.slice(0, 7) === value;
+  }
   function renderFinPage() {
-    var all = [], months = {};
-    state.purchases.forEach(function (m, id) { (m.fin || []).forEach(function (e) { all.push({ e: e, id: id, m: m }); if (e.d) months[e.d.slice(0, 7)] = 1; }); });
-    var sel = $('#fMonth'), keep = sel.value;
-    sel.textContent = '';
-    var o = document.createElement('option'); o.value = ''; o.textContent = 'Усі місяці'; sel.appendChild(o);
-    Object.keys(months).sort().reverse().forEach(function (k) {
-      var p = k.split('-'), op = document.createElement('option'); op.value = k; op.textContent = MONTHS[+p[1] - 1] + ' ' + p[0]; sel.appendChild(op);
-    });
-    sel.value = months[keep] ? keep : '';
-    var mk = sel.value;
-    var rows = all.filter(function (x) { return !mk || (x.e.d || '').slice(0, 7) === mk; }).sort(function (a, b) { return byDate(a.e, b.e); });
+    var all = [];
+    state.purchases.forEach(function (m, id) { (m.fin || []).forEach(function (e) { all.push({ e: e, id: id, m: m }); }); });
+    var rows = all.filter(function (x) { return finMatchesPeriod(x.e); }).sort(function (a, b) { return byDate(a.e, b.e); });
+    var pageSize = Number($('#fgPageSize').value) || 20;
+    var pages = Math.max(1, Math.ceil(rows.length / pageSize));
+    state.finPage = Math.min(Math.max(1, state.finPage), pages);
+    var start = (state.finPage - 1) * pageSize;
+    var pageRows = rows.slice(start, start + pageSize);
     var body = $('#fgRows'); body.textContent = '';
-    rows.forEach(function (x) {
+    pageRows.forEach(function (x) {
       var tr = finRow(x.e), td = el('td'), b = el('button', 'open', x.m.name || 'Без назви');
       b.type = 'button'; b.addEventListener('click', function () { openPurchase(x.id, false); });
       td.appendChild(b); tr.appendChild(td);
@@ -2011,15 +2377,35 @@ service cloud.firestore {
     // row order: date, type, purchase, ... fix: move purchase cell to 2nd column
     Array.prototype.forEach.call(body.children, function (tr) { tr.insertBefore(tr.children[2], tr.children[1]); });
     $('#fgEmpty').hidden = rows.length > 0;
+    $('#fgPager').hidden = rows.length === 0;
+    $('#fgPrev').disabled = state.finPage <= 1;
+    $('#fgNext').disabled = state.finPage >= pages;
+    $('#fgPageInfo').textContent = 'Сторінка ' + state.finPage + ' з ' + pages + ' · ' + rows.length + ' записів';
     var k = $('#fgKpis'); k.textContent = '';
     var t = sumFin(rows.map(function (x) { return { e: x.e, m: x.m }; }));
     kpi(k, 'Товари', money(t.goods, '₴')); kpi(k, 'Доставка', money(t.delivery, '₴'));
     kpi(k, 'Повернено', money(t.refund, '₴'), 'good'); kpi(k, 'Чисті витрати', money(t.net, '₴'));
+    var articles = {};
+    rows.forEach(function (x) {
+      var art = (x.e.art || '').trim();
+      if (x.e.k !== 'goods' || !art) return;
+      if (!articles[art]) articles[art] = { count: 0, total: 0 };
+      articles[art].count++;
+      articles[art].total += num(x.e.a) || 0;
+    });
+    var articleRows = Object.keys(articles).map(function (art) { return { art: art, count: articles[art].count, total: articles[art].total }; }).sort(function (a, b) { return b.total - a.total || a.art.localeCompare(b.art); });
+    var articleBody = $('#fgArticleRows'); articleBody.textContent = '';
+    articleRows.forEach(function (x) {
+      var tr = document.createElement('tr');
+      tr.appendChild(el('td', '', x.art)); tr.appendChild(el('td', 'num', String(x.count))); tr.appendChild(el('td', 'num', money(x.total, '₴')));
+      articleBody.appendChild(tr);
+    });
+    $('#fgArticleEmpty').hidden = articleRows.length > 0;
   }
   function showFin() {
     state.view = 'fin';
     $('#vList').hidden = true; $('#vFin').hidden = false;
-    setTop(); renderFinPage();
+    state.finPage = 1; syncFinPeriodControl(false); setTop(); renderFinPage();
   }
   function paintCurrency() {
     var c = cur();
@@ -2033,6 +2419,7 @@ service cloud.firestore {
     set('#mName', m.name || '');
     set('#mDate', m.date || '');
     set('#mStatus', m.status);
+    $('#mStatus').setAttribute('data-status', m.status || 'planned');
     set('#mCur', m.cur || '$');
     set('#mRate', show(m.rate));
     set('#mFx', show(m.fx));
@@ -2121,7 +2508,8 @@ service cloud.firestore {
     var p = id.replace(/[^A-Za-z0-9_-]/g, '');
     tr.innerHTML =
       '<td class="idx" data-c="idx"></td>' +
-      '<td class="cell c-rcv" data-p="rcv"><label class="chk-rcv-wrap" title="Позначити посилку як отриману"><input type="checkbox" class="chk-rcv" data-k="rcv" aria-label="Посилка отримана"></label></td>' +
+      '<td class="cell c-sent" data-p="sentUa"><label class="chk-rcv-wrap parcel-check" title="Позначити посилку як відправлену в Україну"><input type="checkbox" class="chk-sent" data-k="sentUa" aria-label="Посилка відправлена в Україну"><span>Відправити</span></label></td>' +
+      '<td class="cell c-rcv" data-p="rcv"><label class="chk-rcv-wrap parcel-check" title="Позначити посилку як отриману"><input type="checkbox" class="chk-rcv" data-k="rcv" aria-label="Посилка отримана"><span>Отримано</span></label></td>' +
       '<td class="cell c-art" data-c="art"><input class="in" id="' + p + '-art" data-k="art" autocomplete="off" spellcheck="false" placeholder="Артикул" aria-label="Артикул"></td>' +
       '<td class="c-photo" data-c="photo"><button type="button" class="thumb" data-act="photo" aria-label="Фото"></button><input type="file" accept="image/*" hidden id="' + p + '-file" data-act="file"></td>' +
       '<td class="cell c-status" data-c="status"><select class="in status-sel" id="' + p + '-status" data-k="status" aria-label="Статус товару"><option value="Замовлено">Замовлено</option><option value="На складі">На складі</option></select></td>' +
@@ -2136,6 +2524,7 @@ service cloud.firestore {
       '<td class="calc"><input class="in numin ov" data-o="factCost" data-ov="factCost" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Фактична собівартість" title="Рахується автоматично. Введіть своє значення, очистіть, щоб повернути авто"><div class="sub" data-o="factSub"></div></td>' +
       '<td class="calc" data-p="pw"><input class="in numin ov" data-o="pwPlan" data-ov="pwPlan" inputmode="decimal" autocomplete="off" placeholder="0,000" aria-label="Планова вага посилки" title="Введіть вагу. Якщо порожньо, підставляється сума загальної ваги позицій посилки"></td>' +
       '<td class="cell" data-p="pw"><input class="in numin" data-k="pwf" inputmode="decimal" autocomplete="off" placeholder="0,000" aria-label="Фактична вага посилки"><div class="sub" data-o="pwDelta"></div></td>' +
+      '<td class="calc"><div class="v" data-o="weightCost">—</div><div class="sub" data-o="weightCostSub">за часткою ваги</div></td>' +
       '<td class="cell" data-c="retail"><input class="in numin" id="' + p + '-retail" data-k="retail" inputmode="decimal" autocomplete="off" placeholder="0,00" aria-label="Роздрібна вартість"><div class="sub" data-o="margin"></div></td>' +
       '<td class="cell"><input class="in note" data-k="note" autocomplete="off" placeholder="Коментар" aria-label="Коментар"></td>' +
       '<td class="act"><button type="button" class="del" data-act="del" aria-label="Видалити рядок">×</button></td>';
@@ -2148,7 +2537,9 @@ service cloud.firestore {
     tr.querySelectorAll('[data-c]').forEach(function (e) { o.cells[e.getAttribute('data-c')] = e; });
     o.pc = Array.prototype.slice.call(tr.querySelectorAll('td[data-p]'));
     o.cellRcv = tr.querySelector('.c-rcv');
+    o.cellSent = tr.querySelector('.c-sent');
     o.chkRcv = tr.querySelector('input[data-k="rcv"]');
+    o.chkSent = tr.querySelector('input[data-k="sentUa"]');
     o.inputs = {};
     tr.querySelectorAll('input[data-k], select[data-k]').forEach(function (e) { o.inputs[e.getAttribute('data-k')] = e; });
     refs.set(id, o);
@@ -2159,13 +2550,15 @@ service cloud.firestore {
     var topId = (state.lay && state.lay.idx && state.lay.idx.cov[id]) || id;
     var members = groupMembers('idx', topId) || [topId];
     var rTop = state.rows.get(topId);
-    var isRcv = !!(rTop && rTop.rcv);
+    var isRcv = !!(rTop && rTop.rcv), isSent = !!(rTop && rTop.sentUa);
     members.forEach(function (mId) {
       var o = refs.get(mId);
       if (o) {
         if (o.chkRcv) o.chkRcv.checked = isRcv;
+        if (o.chkSent) o.chkSent.checked = isSent;
         if (o.cells && o.cells.idx) o.cells.idx.classList.toggle('rcv', isRcv);
         if (o.cellRcv) o.cellRcv.classList.toggle('rcv', isRcv);
+        if (o.cellSent) o.cellSent.classList.toggle('sent', isSent);
         if (o.tr) o.tr.classList.toggle('row-rcv', isRcv);
       }
     });
@@ -2174,7 +2567,7 @@ service cloud.firestore {
     var r = state.rows.get(id), o = refs.get(id);
     if (!r || !o) return;
     Object.keys(o.inputs).forEach(function (k) {
-      if (k === 'rcv') return;
+      if (k === 'rcv' || k === 'sentUa') return;
       var e = o.inputs[k];
       if (onlyIdle && document.activeElement === e) return;
       var val = STRK.indexOf(k) >= 0 ? (r[k] || '') : show(r[k]);
@@ -2185,6 +2578,7 @@ service cloud.firestore {
       if (e.value !== val) e.value = val;
     });
     if (o.chkRcv) o.chkRcv.checked = !!r.rcv;
+    if (o.chkSent) o.chkSent.checked = !!r.sentUa;
     setThumb(id);
     paintRcvStatus(id);
   }
@@ -2233,6 +2627,21 @@ service cloud.firestore {
     e.classList.toggle('good', kind === 'good');
     e.classList.toggle('bad', kind === 'bad');
   }
+  function weightBasedCost(id) {
+    var topId = (state.lay && state.lay.idx && state.lay.idx.cov[id]) || id;
+    var members = groupMembers('idx', topId) || [topId];
+    var totalDelivery = 0, hasDelivery = false, totalWeight = 0, totalQty = 0;
+    members.forEach(function (m) {
+      var cm = calcId(m);
+      if (cm.df != null) { totalDelivery += cm.df; hasDelivery = true; }
+      if (cm.w != null && cm.w > 0) totalWeight += cm.w;
+      if (cm.q != null && cm.q > 0) totalQty += cm.q;
+    });
+    var c = calcId(id);
+    if (!hasDelivery || !(c.q > 0) || c.unit == null) return null;
+    var share = totalWeight > 0 ? ((c.w || 0) / totalWeight) : (totalQty > 0 ? c.q / totalQty : 1 / members.length);
+    return c.unit + totalDelivery * share / c.q;
+  }
   function recompute(id, skipStats) {
     var r = state.rows.get(id), o = refs.get(id);
     if (!r || !o) return;
@@ -2266,11 +2675,14 @@ service cloud.firestore {
       setSub(o.planCostSub, '');
     }
     var pm = groupMembers('idx', id) || [id], pws = 0;
-    pm.forEach(function (m2) { var c2 = calcId(m2); if (c2.w != null && c2.q != null) pws += c2.w * c2.q; });
+    pm.forEach(function (m2) { var c2 = calcId(m2); if (c2.w != null) pws += c2.w; });
     var ovp = r.ov && r.ov.pwPlan != null ? r.ov.pwPlan : null, pwe = ovp != null ? ovp : (pws > 0 ? pws : null);
     setOv(o.pwPlan, pwe, ovp != null, 3);
     var pwf = num(r.pwf);
     if (pwf != null && pwe > 0) { var dw = pwf - pwe; setSub(o.pwDelta, sgn(dw) + fmt(Math.abs(dw)) + ' до плану', dw > 0 ? 'bad' : dw < 0 ? 'good' : ''); } else setSub(o.pwDelta, '');
+    var weightCost = weightBasedCost(id);
+    setV(o.weightCost, weightCost);
+    setSub(o.weightCostSub, weightCost == null ? 'вкажіть фактичну доставку' : 'закупка + доставка за вагою');
     var gd = groupMembers('delFact', id);
     if (gd) {
       var sdf = 0, spl = 0, okp = true;
@@ -2303,7 +2715,7 @@ service cloud.firestore {
   }
   function addRow(data, focus) {
     var id = mode === 'db' ? db.collection(itemsPath(state.pid)).doc().id : uid();
-    var r = { note: '', ttn: '', pwf: null, art: '', photo: '', status: 'Замовлено', qty: null, total: null, weight: null, delFact: null, retail: null, mg: null, rcv: false, ts: Date.now() * 1000 + (seq++ % 1000) };
+    var r = { note: '', ttn: '', pwf: null, art: '', photo: '', status: 'Замовлено', qty: null, total: null, weight: null, delFact: null, retail: null, mg: null, sentUa: false, rcv: false, ts: Date.now() * 1000 + (seq++ % 1000) };
     Object.keys(data || {}).forEach(function (k) { r[k] = data[k]; });
     state.rows.set(id, r);
     var tr = buildRow(id);
@@ -2345,7 +2757,7 @@ service cloud.firestore {
   function applyRemote(id, d) {
     var r = state.rows.get(id);
     if (!r) {
-      r = { art: d.art || '', photo: d.photo || '', status: d.status || 'Замовлено', qty: num(d.qty), total: num(d.total), weight: num(d.weight), delFact: num(d.delFact), retail: num(d.retail), mg: cleanMg(d.mg), ov: cleanOv(d.ov), note: d.note || '', ttn: d.ttn || '', pwf: num(d.pwf), rcv: !!d.rcv, ts: Number(d.ts) || Date.now() * 1000 };
+      r = { art: d.art || '', photo: d.photo || '', status: d.status || 'Замовлено', qty: num(d.qty), total: num(d.total), weight: num(d.weight), delFact: num(d.delFact), retail: num(d.retail), mg: cleanMg(d.mg), ov: cleanOv(d.ov), note: d.note || '', ttn: d.ttn || '', pwf: num(d.pwf), sentUa: !!d.sentUa, rcv: !!d.rcv, ts: Number(d.ts) || Date.now() * 1000 };
       state.rows.set(id, r);
       var tr = buildRow(id);
       insertSorted(tr, r.ts);
@@ -2375,6 +2787,8 @@ service cloud.firestore {
     if (st !== (r.status || 'Замовлено') && document.activeElement !== refs.get(id).inputs.status) { r.status = st; changed = true; }
     var rcv = !!d.rcv;
     if (rcv !== !!r.rcv) { r.rcv = rcv; changed = true; }
+    var sentUa = !!d.sentUa;
+    if (sentUa !== !!r.sentUa) { r.sentUa = sentUa; changed = true; }
     if (changed) { fillInputs(id, true); recompute(id, true); }
   }
 
@@ -2667,15 +3081,17 @@ service cloud.firestore {
     top.mg = top.mg || {};
     top.mg[c] = hi - lo + 1;
     if (c === 'idx') {
-      var anyRcv = false;
+      var anyRcv = false, anySent = false;
       for (var i = lo; i <= hi; i++) {
         var rCheck = state.rows.get(ids[i]);
         if (rCheck && rCheck.rcv) anyRcv = true;
+        if (rCheck && rCheck.sentUa) anySent = true;
       }
       for (var i = lo; i <= hi; i++) {
         var rSet = state.rows.get(ids[i]);
         if (rSet) {
           rSet.rcv = anyRcv;
+          rSet.sentUa = anySent;
           if (touched.indexOf(ids[i]) < 0) touched.push(ids[i]);
         }
       }
@@ -2747,7 +3163,7 @@ service cloud.firestore {
   }
   function renderStats() {
     if (state.view !== 'detail') return;
-    var n = 0, q = 0, buy = 0, wt = 0, pd = 0, fd = 0, pc = 0, fc = 0, rev = 0, prof = 0, profBase = 0, withFact = 0, delDelta = 0, delBoth = 0, pf = 0, pp = 0;
+    var n = 0, q = 0, buy = 0, wt = 0, pd = 0, fd = 0, pc = 0, fc = 0, wc = 0, wcRows = 0, rev = 0, prof = 0, profBase = 0, withFact = 0, delDelta = 0, delBoth = 0, pf = 0, pp = 0;
     state.rows.forEach(function (r, id) {
       var c = calcId(id);
       n++;
@@ -2765,6 +3181,8 @@ service cloud.firestore {
       if (c.planDel != null && c.df != null) { delDelta += c.df - c.planDel; delBoth++; }
       if (c.planCost != null && c.q > 0) pc += c.planCost * c.q;
       if (c.factCost != null && c.q > 0) { fc += c.factCost * c.q; withFact++; }
+      var weightCost = weightBasedCost(id);
+      if (weightCost != null && c.q > 0) { wc += weightCost * c.q; wcRows++; }
       if (c.rt != null && c.q > 0) {
         rev += c.rt * c.q;
         if (c.eff != null) { prof += (c.rt - c.eff) * c.q; profBase += c.rt * c.q; }
@@ -2795,6 +3213,7 @@ service cloud.firestore {
     ft('#f-factCost', fmt(fc), withFact > 0);
     ft('#f-pwPlan', fmt(pp), has && pp > 0);
     ft('#f-pwFact', fmt(pf), pf > 0);
+    ft('#f-weightCost', fmt(wc), wcRows > 0);
     ft('#f-retail', fmt(rev), has);
 
     var m = M();
@@ -2905,17 +3324,18 @@ service cloud.firestore {
       clearTimeout(Number(btn.dataset.armed));
       delete btn.dataset.armed;
       btn.classList.remove('armed');
-      btn.textContent = btn.dataset.label;
+      btn.innerHTML = btn.dataset.labelHtml || btn.dataset.label;
       fn();
       return;
     }
     btn.dataset.label = btn.textContent;
+    btn.dataset.labelHtml = btn.innerHTML;
     btn.classList.add('armed');
     btn.textContent = armedLabel;
     btn.dataset.armed = String(setTimeout(function () {
       delete btn.dataset.armed;
       btn.classList.remove('armed');
-      btn.textContent = btn.dataset.label;
+      btn.innerHTML = btn.dataset.labelHtml || btn.dataset.label;
     }, 3000));
   }
 
@@ -2943,10 +3363,15 @@ service cloud.firestore {
     if (!/^image\//.test(f.type)) { flash('Потрібен файл зображення'); return; }
     shrink(f).then(function (d) { catPhoto = d; paintCmPhoto(); }).catch(function () { flash('Не вдалося прочитати фото'); });
   });
-  $('#fMonth').addEventListener('change', renderFinPage);
+  $('#fPeriodType').addEventListener('change', function () { state.finPage = 1; syncFinPeriodControl(true); renderFinPage(); });
+  $('#fPeriodValue').addEventListener('change', function () { state.finPage = 1; renderFinPage(); });
+  $('#fgPageSize').addEventListener('change', function () { state.finPage = 1; renderFinPage(); });
+  $('#fgPrev').addEventListener('click', function () { if (state.finPage > 1) { state.finPage--; renderFinPage(); } });
+  $('#fgNext').addEventListener('click', function () { state.finPage++; renderFinPage(); });
   $('#finAdd').addEventListener('click', addFin);
   $('#finAmt').addEventListener('keydown', function (e) { if (e.key === 'Enter') addFin(); });
   $('#plFlt').addEventListener('input', function (e) { state.pfilter = e.target.value; renderList(); });
+  $('#plMonth').addEventListener('change', function (e) { state.pmonth = e.target.value; renderList(); });
   $('#plRows').addEventListener('click', function (e) {
     var tr = e.target.closest('tr.plrow');
     if (!tr) return;
@@ -2960,7 +3385,7 @@ service cloud.firestore {
 
   $('#mName').addEventListener('input', function (e) { var m = M(); if (!m) return; m.name = e.target.value; scheduleMeta(state.pid, 500); });
   $('#mDate').addEventListener('input', function (e) { var m = M(); if (!m) return; m.date = e.target.value; scheduleMeta(state.pid, 500); });
-  $('#mStatus').addEventListener('change', function (e) { var m = M(); if (!m) return; m.status = e.target.value; scheduleMeta(state.pid, 200); });
+  $('#mStatus').addEventListener('change', function (e) { var m = M(); if (!m) return; m.status = e.target.value; e.target.setAttribute('data-status', m.status); scheduleMeta(state.pid, 200); });
   $('#mCur').addEventListener('change', function (e) {
     var m = M(); if (!m) return;
     m.cur = e.target.value;
@@ -3031,6 +3456,7 @@ service cloud.firestore {
 
   tbody.addEventListener('input', function (e) {
     var t = e.target, k = t.getAttribute && t.getAttribute('data-k');
+    if (k === 'rcv' || k === 'sentUa') return;
     var kv = t.getAttribute && t.getAttribute('data-ov');
     if (kv) {
       var id0 = t.closest('tr').dataset.id, r0 = state.rows.get(id0), v0 = num(t.value);
@@ -3095,6 +3521,17 @@ service cloud.firestore {
   });
   tbody.addEventListener('change', function (e) {
     var t = e.target;
+    if (t.getAttribute && t.getAttribute('data-k') === 'sentUa') {
+      var id = t.closest('tr').dataset.id;
+      var topId = (state.lay && state.lay.idx && state.lay.idx.cov[id]) || id;
+      var checked = !!t.checked;
+      var members = groupMembers('idx', topId) || [topId];
+      members.forEach(function (mId) {
+        var r = state.rows.get(mId);
+        if (r) { r.sentUa = checked; scheduleItem(mId); }
+      });
+      paintRcvStatus(topId);
+    }
     if (t.getAttribute && t.getAttribute('data-k') === 'rcv') {
       var id = t.closest('tr').dataset.id;
       var topId = (state.lay && state.lay.idx && state.lay.idx.cov[id]) || id;
@@ -3196,6 +3633,87 @@ service cloud.firestore {
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flushAll(); });
 
   /* ---------- start ---------- */
+  window.AutoPurchaseDatabase = {
+    save: function (rows, sourceName) {
+      if (mode !== 'db' || !db) return Promise.reject(new Error('Firebase недоступний'));
+      rows = JSON.parse(JSON.stringify(Array.isArray(rows) ? rows : []));
+      var ref = db.collection('autopurchaseSources').doc('uploaded-history');
+      return ref.collection('chunks').get().then(function (snap) {
+        return Promise.all(snap.docs.map(function (d) { return d.ref.delete(); }));
+      }).then(function () {
+        var writes = [ref.set({ name: sourceName || 'Завантажена історія', count: rows.length, updatedAt: Date.now(), permanent: true })];
+        rows.forEach(function (_, i) { if (i % 50 === 0) writes.push(ref.collection('chunks').doc(String(i / 50).padStart(5, '0')).set({ rows: rows.slice(i, i + 50) })); });
+        return Promise.all(writes);
+      });
+    },
+    load: function () {
+      if (mode !== 'db' || !db) return Promise.reject(new Error('Firebase недоступний'));
+      return db.collection('autopurchaseSources').get().then(function (sources) {
+        return Promise.all(sources.docs.map(function (source) { return source.ref.collection('chunks').get(); }));
+      }).then(function (sets) {
+        var rows = []; sets.forEach(function (snap) { snap.docs.forEach(function (d) { rows = rows.concat(d.data().rows || []); }); }); return rows;
+      });
+    }
+  };
+  window.autopurchasePurchaseTargets = function () {
+    return Array.from(state.purchases.entries()).sort(function (a, b) { return (b[1].date || '').localeCompare(a[1].date || '') || b[1].ts - a[1].ts; }).map(function (x) {
+      return { id:x[0], name:x[1].name || 'Без назви', date:fmtDate(x[1].date) };
+    });
+  };
+  function waitForPurchaseItems(pid) {
+    if (state.pid === pid && itemsLoaded) return Promise.resolve();
+    return new Promise(function (resolve, reject) {
+      var started = Date.now();
+      (function check() {
+        if (state.pid !== pid) { reject(new Error('Обрану закупку закрито')); return; }
+        if (itemsLoaded) { resolve(); return; }
+        if (Date.now() - started > 12000) { reject(new Error('Не вдалося завантажити позиції закупки')); return; }
+        setTimeout(check, 80);
+      }());
+    });
+  }
+  window.addEventListener('autopurchase:commit', async function (ev) {
+    try {
+      var plan = ev.detail && ev.detail.plan; if (!plan || !plan.parcels || !plan.parcels.length) throw new Error('Порожній план');
+      var createNew = !!(ev.detail && ev.detail.createNew);
+      var targetPid = ev.detail && ev.detail.targetPid;
+      if (createNew) {
+        targetPid = mode === 'db' ? db.collection('purchases').doc().id : uid();
+        var autoOptions = ev.detail.options || {};
+        var autoMeta = { name:'Автозакупка · ' + fmtDate(today()), date:today(), status:'planned', cur:'$', rate:num(autoOptions.rate) || lastRate(), ts:Date.now() * 1000 + (seq++ % 1000), ex:false, sum:null, autoFin:true };
+        state.purchases.set(targetPid, autoMeta);
+        flushMeta(targetPid);
+      } else if (!targetPid || !state.purchases.has(targetPid)) throw new Error('Оберіть існуючу закупку');
+      if (state.pid !== targetPid || state.view !== 'detail') openPurchase(targetPid, false);
+      await waitForPurchaseItems(targetPid);
+      if (!M()) throw new Error('Закупку не знайдено');
+      plan.parcels.forEach(function (parcel) {
+        var parcelRows = [];
+        parcel.items.forEach(function (x) {
+          var catalogItem = catFind(x.article);
+          parcelRows.push(addRow({
+            art:x.article,
+            qty:x.qty,
+            total:null,
+            weight:null,
+            retail:catalogItem && catalogItem.price != null ? catalogItem.price : null,
+            photo:catalogItem && catalogItem.photo ? catalogItem.photo : '',
+            status:'Замовлено'
+          }, false));
+        });
+        if (!parcelRows.length) return;
+        var top = state.rows.get(parcelRows[0]);
+        var count = parcelRows.length;
+        top.ov = top.ov || {};
+        top.ov.planDel = r2(parcel.delivery);
+        top.ov.planCost = r2(parcel.averageUnitCost);
+        top.ov.pwPlan = Math.round(parcel.weight * 1000) / 1000;
+        if (count >= 2) top.mg = { idx:count, planDel:count, planCost:count };
+        parcelRows.forEach(function (id) { flushItem(state.pid, id); });
+      });
+      relayout(); recomputeAll(); flushAll(); $('#autoModal').hidden = true; flash(createNew ? 'Нову закупку створено' : 'План автозакупки додано');
+    } catch (e) { $('#autoSourceStatus').textContent = 'Не вдалося додати посилки: ' + (e.message || e); }
+  });
   function finishLoad() {
     loaded = true;
     $('#createBtn').disabled = false;
@@ -3210,6 +3728,7 @@ service cloud.firestore {
     }
     if (raw && raw.catalog) Object.keys(raw.catalog).forEach(function (id) { state.cat.set(id, normCat(raw.catalog[id], id)); });
     localItems = (raw && raw.items) || {};
+    refreshCatalogPurchaseAverages();
     setStatus('local');
     finishLoad();
   }
@@ -3239,6 +3758,7 @@ service cloud.firestore {
       if (!loaded) { setStatus('saved', 'синхронізовано'); finishLoad(); }
       else if (state.view === 'list') renderList();
       else if (state.view === 'fin') renderFinPage();
+      refreshCatalogPurchaseAverages();
     }, function (err) {
       setStatus('error', errText(err));
       if (!loaded) loadLocal();
@@ -3290,11 +3810,7 @@ service cloud.firestore {
           firebase.initializeApp(cfg);
         }
         db = firebase.firestore();
-        if (firebase.auth) {
-          firebase.auth().signInAnonymously().catch(function (err) {
-            console.warn('Firebase anon auth notice:', err);
-          });
-        }
+        /* Firestore in this app does not require Firebase Anonymous Auth. */
         return true;
       } else {
         console.warn('Firebase SDK not found');
@@ -3475,7 +3991,8 @@ service cloud.firestore {
     authEyeBtn.addEventListener('click', function () {
       var isPwd = authPass.type === 'password';
       authPass.type = isPwd ? 'text' : 'password';
-      authEyeBtn.textContent = isPwd ? '🙈' : '👁';
+      authEyeBtn.classList.toggle('is-visible', isPwd);
+      authEyeBtn.setAttribute('aria-label', isPwd ? 'Приховати пароль' : 'Показати пароль');
     });
   }
 

@@ -1,12 +1,25 @@
 {
+  "functions": { "source": "functions" },
   "hosting": {
     "public": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
+      ".git/**",
+      ".tmp/**",
+      ".cache/**",
+      ".config/**",
       "node_modules/**",
+      "functions/**",
+      "tests/**",
+      "firebase-d.ps1",
+      "AUTOPURCHASE.md",
+      "DESIGN_SYSTEM.md",
+      "firepit-log.txt",
+      "*-debug.log",
       "package.json",
-      "package-lock.json"
+      "package-lock.json",
+      "# Облік закупок.txt"
     ],
     "rewrites": [
       {

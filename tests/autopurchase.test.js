@@ -1,0 +1,14 @@
+const assert = require('assert');
+const A = require('../autopurchase-core');
+const opts = { tariff: 16, rate: 47, surcharge: 2, limit: 9, boxes: {small:.2, medium:.3, large:.4} };
+let p = A.calculateParcel([{article:'2531',qty:60,price:103.83/60,weight:.065},{article:'3435',qty:100,price:13,weight:.018},{article:'3250',qty:40,price:133/40,weight:.020}], {...opts,boxWeight:.3});
+assert.equal(p.weight.toFixed(3), '6.800'); assert.equal(p.delivery.toFixed(2), '5395.60'); assert.equal(p.goods.toFixed(2), '1536.83'); assert.equal(p.total.toFixed(2), '6932.43'); assert.equal(p.averageUnitCost.toFixed(2), '34.66');
+p = A.calculateParcel([['2160',270,.1703],['8541',44,.0205],['8080',46,.0205],['2531',190,.065],['9855',120,.02165],['4400',240,.1353],['3435',136,.018],['3250',48,.020],['2052',54,.019],['2101',43,.0206]].map(x=>({article:x[0],qty:10,price:x[1]/10,weight:x[2]})), {...opts,boxWeight:.2});
+assert.equal(p.weight.toFixed(3), '5.309'); assert.equal(p.delivery.toFixed(2), '4931.99'); assert.equal(p.goods.toFixed(2), '1191.00'); assert.equal(p.total.toFixed(2), '6122.99'); assert.equal(p.averageUnitCost.toFixed(2), '61.23');
+assert.deepEqual(A.parseText('3250 - 40 шт\n2531: 60'), [{article:'3250',qty:40},{article:'2531',qty:60}]);
+assert.ok(Math.abs(p.items.reduce((s,x)=>s+x.delivery,0)-p.delivery)<1e-8);
+let plan=A.optimize([{article:'BIG',qty:300,price:10,weight:.04},{article:'SMALL',qty:100,price:5,weight:.015}],opts).best;
+assert.equal(plan.parcels.flatMap(p=>p.items).filter(x=>x.article==='BIG').reduce((s,x)=>s+x.qty,0),300);
+assert.equal(plan.parcels.flatMap(p=>p.items).filter(x=>x.article==='SMALL').reduce((s,x)=>s+x.qty,0),100);
+assert.ok(plan.parcels.every(p=>p.weight<=9+1e-9));
+console.log('autopurchase tests: OK');
