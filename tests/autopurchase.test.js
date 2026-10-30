@@ -11,4 +11,17 @@ let plan=A.optimize([{article:'BIG',qty:300,price:10,weight:.04},{article:'SMALL
 assert.equal(plan.parcels.flatMap(p=>p.items).filter(x=>x.article==='BIG').reduce((s,x)=>s+x.qty,0),300);
 assert.equal(plan.parcels.flatMap(p=>p.items).filter(x=>x.article==='SMALL').reduce((s,x)=>s+x.qty,0),100);
 assert.ok(plan.parcels.every(p=>p.weight<=9+1e-9));
+let learned=A.learnHistory([
+  {qty:10,sum:1000,weightTotal:2,planDelivery:200,actualDelivery:240,planUnitCost:120,actualUnitCost:124,planParcelWeight:2.2,actualParcelWeight:2.3},
+  {qty:20,sum:2200,weightTotal:4.2,planDelivery:400,actualDelivery:440,planUnitCost:130,actualUnitCost:132,planParcelWeight:4.4,actualParcelWeight:4.5}
+]);
+assert.equal(learned.price,105);
+assert.equal(learned.weight,0.20500000000000002);
+assert.ok(learned.deliveryFactor>1 && learned.deliveryFactor<1.2);
+assert.equal(learned.factualDelivery,2);
+assert.equal(learned.factualWeight,2);
+let singleton=A.learnHistory([{qty:10,sum:1000,weightTotal:2,planDelivery:200,actualDelivery:230,planUnitCost:120,actualUnitCost:123}]);
+assert.equal(singleton.deliveryFactor,1.15);
+let corrected=A.calculateParcel([{article:'A',qty:10,price:100,weight:.2,deliveryFactor:1.1}],opts);
+assert.ok(corrected.delivery>A.calculateParcel([{article:'A',qty:10,price:100,weight:.2}],opts).delivery);
 console.log('autopurchase tests: OK');

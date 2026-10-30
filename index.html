@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Облік закупок</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;600;700;900&family=Inter:wght@400;700&display=swap">
@@ -64,6 +65,25 @@ h1 { margin: 0; font-size: 36px; line-height: 1; font-weight: 800; text-transfor
 .status[data-k="saving"] i, .status[data-k="connecting"] i { background: var(--accent); }
 .status[data-k="error"] { color: var(--bad); }
 .status[data-k="error"] i { background: var(--bad); }
+.profile-picker { position:relative; }
+.profile-button { display:flex; align-items:center; justify-content:center; width:42px; height:42px; padding:0; border:0; border-radius:50%; background:linear-gradient(145deg,var(--primary,#003dff),#6c47ff); color:#fff; cursor:pointer; box-shadow:0 5px 14px rgba(0,61,255,.22); transition:transform .15s,box-shadow .15s; }
+.profile-button:hover { transform:translateY(-1px); box-shadow:0 8px 20px rgba(0,61,255,.3); }
+.profile-button span { display:block; max-width:34px; overflow:hidden; color:#fff; font-size:13px; font-weight:800; line-height:1; letter-spacing:.02em; text-overflow:clip; white-space:nowrap; text-transform:uppercase; }
+.profile-menu { position:absolute; z-index:120; top:48px; right:0; width:min(310px,calc(100vw - 32px)); padding:8px; border:1px solid var(--hairline,#ddd); border-radius:14px; background:#fff; color:#14182d; box-shadow:0 18px 50px rgba(20,24,45,.16); }
+.profile-list { display:grid; gap:3px; max-height:280px; overflow:auto; }
+.profile-option-row { display:flex; align-items:center; gap:4px; width:100%; min-height:46px; border-radius:10px; }
+.profile-option-row.is-active { background:#eef2ff; color:#003dff; }
+.profile-option { display:flex; align-items:center; gap:10px; min-width:0; min-height:46px; flex:1 1 auto; padding:8px 10px; border:0; border-radius:10px; background:transparent; color:#14182d; text-align:left; cursor:pointer; }
+.profile-option-row.is-active .profile-option { color:#003dff; }
+.profile-option:hover { color:var(--primary,#003dff); }
+.profile-option:before { content:""; width:8px; height:8px; flex:0 0 auto; border:2px solid currentColor; border-radius:50%; }
+.profile-option-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.profile-delete { display:flex; align-items:center; justify-content:center; width:36px; height:36px; flex:0 0 auto; padding:0; border:0; border-radius:9px; background:transparent; color:#9a3340; cursor:pointer; }
+.profile-delete:hover { background:#fff0f2; color:#c5162e; }
+.profile-delete svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.profile-create { width:100%; margin-top:8px; border-radius:9px; }
+.profile-dialog-copy { margin:0 0 18px; color:var(--muted); }
+.profile-name-field { width:100%; }
 
 /* controls */
 .btn { height: 36px; padding: 0 16px; border: 1px solid var(--fg); background: var(--bg); color: var(--fg); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; white-space: nowrap; }
@@ -1137,10 +1157,23 @@ textarea.ul { height: auto; min-height: 68px; padding: 10px 16px; resize: vertic
     <button class="btn" id="back" type="button" hidden>← Усі закупки</button>
     <h1 id="h1">Закупки</h1>
     <div class="top-controls">
+      <div class="profile-picker" id="profilePicker">
+        <button class="profile-button" id="profileBtn" type="button" aria-haspopup="menu" aria-expanded="false" title="Основний профіль" aria-label="Профіль: Основний профіль"><span id="profileName" aria-hidden="true">ОП</span></button>
+        <div class="profile-menu" id="profileMenu" hidden><div class="profile-list" id="profileList"></div><button class="btn primary profile-create" id="profileCreateBtn" type="button">+ Новий профіль</button></div>
+      </div>
       <div class="status" id="status" data-k="connecting" style="cursor:pointer" title="Натисніть для налаштування бази даних"><i></i><span id="statusText">підключення…</span></div>
       <button class="btn top-utility" id="fbOpenBtn" type="button" title="Налаштування Firebase"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18.5V8l4-3v13.5M9 8l5-4v14.5M14 9l5-3v12.5M3 19h18"/></svg><span>Firebase</span></button>
       <button class="btn top-utility" id="logoutBtn" type="button" title="Вийти з облікового запису"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10"/></svg><span>Вийти</span></button>
     </div>
+  </div>
+
+  <div class="modal" id="profileModal" hidden>
+    <form class="mbox" id="profileForm">
+      <h2>Новий профіль закупок</h2>
+      <p class="profile-dialog-copy">Профіль матиме окремі закупки, каталог і фінансові записи.</p>
+      <label><span>Назва профілю</span><input class="ul profile-name-field" id="profileNameInput" maxlength="60" autocomplete="off" placeholder="Наприклад, Опт"></label>
+      <div class="bar"><span class="spacer"></span><button class="btn" id="profileCancelBtn" type="button">Скасувати</button><button class="btn primary" type="submit">Створити</button></div>
+    </form>
   </div>
 
   <!-- LIST -->
@@ -1477,13 +1510,15 @@ service cloud.firestore {
   </div>
 </div>
 
-<script src="autopurchase-core.js?v=20261021-3"></script>
-<script src="autopurchase-ui.js?v=20261022-11"></script>
+<script src="autopurchase-core.js?v=20261025-1"></script>
+<script src="autopurchase-ui.js?v=20261025-1"></script>
 <script>
 (function () {
   'use strict';
   var KEY = 'zakupky-swiss.v2';
   var CFG_KEY = 'zakupky-firebase-config';
+  var PROFILES_KEY = 'zakupky-profiles.v1';
+  var ACTIVE_PROFILE_KEY = 'zakupky-active-profile.v1';
   // =========================================================================
   // НАЛАШТУВАННЯ FIREBASE:
   // Ви можете вставити конфігурацію сюди АБО в інтерфейсі (кнопка «🔥 Firebase»)
@@ -1511,10 +1546,13 @@ service cloud.firestore {
   var mode = 'connecting';
   var loaded = false;
   var itemsLoaded = false;
-  var db = null, downloads = null, unsubItems = null;
+  var db = null, downloads = null, unsubItems = null, unsubCatalog = null, unsubPurchases = null, unsubProfiles = null;
   var localItems = {};
   var seq = 0;
   var lbId = null;
+  var profiles = loadProfiles();
+  var activeProfileId = localStorage.getItem(ACTIVE_PROFILE_KEY) || 'default';
+  if (!profiles[activeProfileId]) activeProfileId = 'default';
 
   /* ---------- helpers ---------- */
   var nf, nf1, nf3;
@@ -1540,6 +1578,17 @@ service cloud.firestore {
   function fmtDate(s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? m[3] + '.' + m[2] + '.' + m[1] : '—'; }
   function money(n, c) { return fmt(n) + ' ' + c; }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function loadProfiles() {
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(PROFILES_KEY) || 'null'); } catch (e) {}
+    if (!saved || typeof saved !== 'object') saved = {};
+    if (!saved.default || !String(saved.default.name || '').trim()) saved.default = { name: 'Основний профіль' };
+    return saved;
+  }
+  function saveProfiles() { localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles)); }
+  function profilePrefix() { return activeProfileId === 'default' ? '' : 'profiles/' + activeProfileId + '/'; }
+  function profileCollection(name) { return db.collection(profilePrefix() + name); }
+  function localKey() { return activeProfileId === 'default' ? KEY : KEY + '.profile.' + activeProfileId; }
   function M() { return state.purchases.get(state.pid); }
   function cur() { var m = M(); return (m && m.cur) || '$'; }
   function fx() { var m = M(); if (!m) return null; return m.cur === '₴' ? 1 : num(m.fx); }
@@ -1555,7 +1604,7 @@ service cloud.firestore {
       cur: d.cur || '$', rate: num(d.rate), ts: Number(d.ts) || Date.now() * 1000, ex: !!d.ex, sum: d.sum || null, fin: cleanFin(d.fin), fx: num(d.fx), note: d.note || '', autoFin: d.autoFin !== false
     };
   }
-  function itemsPath(pid) { return 'purchases/' + pid + '/items'; }
+  function itemsPath(pid) { return profilePrefix() + 'purchases/' + pid + '/items'; }
 
   /* ---------- status ---------- */
   var statusBase = { k: 'connecting', t: 'підключення…' };
@@ -1629,7 +1678,7 @@ service cloud.firestore {
     var ps = {};
     state.purchases.forEach(function (m, id) { ps[id] = metaPayload(m); });
     var cs = {}; state.cat.forEach(function (c, id) { cs[id] = catPayload(c); });
-    localStorage.setItem(KEY, JSON.stringify({ purchases: ps, items: localItems, catalog: cs }));
+    localStorage.setItem(localKey(), JSON.stringify({ purchases: ps, items: localItems, catalog: cs }));
   }
   function localSave() {
     try { saveLocal(); setStatus('local'); } catch (e) { setStatus('error', 'браузер не дозволив зберегти'); }
@@ -1652,7 +1701,8 @@ service cloud.firestore {
     if (!r) return;
     if (mode === 'local') { localSave(); return; }
     var data = payload(r);
-    chain[k] = track((chain[k] || Promise.resolve()).then(function () { return db.collection(itemsPath(pid)).doc(id).set(data); }));
+    var itemRef = db.collection(itemsPath(pid)).doc(id);
+    chain[k] = track((chain[k] || Promise.resolve()).then(function () { return itemRef.set(data); }));
   }
   function scheduleItem(id) {
     var k = 'i:' + id;
@@ -1667,7 +1717,8 @@ service cloud.firestore {
     if (!m) return;
     if (mode === 'local') { localSave(); return; }
     var data = metaPayload(m);
-    chain[k] = track((chain[k] || Promise.resolve()).then(function () { return db.collection('purchases').doc(pid).set(data); }));
+    var metaRef = profileCollection('purchases').doc(pid);
+    chain[k] = track((chain[k] || Promise.resolve()).then(function () { return metaRef.set(data); }));
   }
   function scheduleMeta(pid, delay) {
     var k = 'm:' + pid;
@@ -1770,7 +1821,7 @@ service cloud.firestore {
       : (f ? 'За цим запитом у вибраному місяці закупок не знайдено.' : 'У вибраному місяці закупок немає. Оберіть інший місяць або створіть нову закупку.');
   }
   function createPurchase() {
-    var id = mode === 'db' ? db.collection('purchases').doc().id : uid();
+    var id = mode === 'db' ? profileCollection('purchases').doc().id : uid();
     var m = { name: 'Нова закупка', date: today(), status: 'planned', cur: '$', rate: lastRate(), ts: Date.now() * 1000 + (seq++ % 1000), ex: false, sum: null, autoFin: true };
     state.purchases.set(id, m);
     flushMeta(id);
@@ -1782,11 +1833,12 @@ service cloud.firestore {
     if (mode === 'local') { delete localItems[id]; localSave(); renderList(); return; }
     renderList();
     var ic = db.collection(itemsPath(id));
+    var purchaseRef = profileCollection('purchases').doc(id);
     track(ic.get().then(function (snap) {
       var p = Promise.resolve();
       snap.docs.forEach(function (d) { p = p.then(function () { return ic.doc(d.id).delete(); }); });
       return p;
-    }).then(function () { return db.collection('purchases').doc(id).delete(); }));
+    }).then(function () { return purchaseRef.delete(); }));
   }
   function cycleStatus(id) {
     var m = state.purchases.get(id);
@@ -1840,8 +1892,37 @@ service cloud.firestore {
   window.autopurchaseRefreshData = function () { return refreshCatalogPurchaseAverages(); };
   function refreshCatalogPurchaseAverages() {
     var run = ++catAverageRun;
-    function finish(groups) {
-      if (run !== catAverageRun) return;
+    function historicalRows(pid, rows) {
+      var purchase = state.purchases.get(pid) || {}, sorted = rows.slice().sort(function (a, b) { return (Number(a.ts) || 0) - (Number(b.ts) || 0); }), out = [];
+      for (var at = 0; at < sorted.length;) {
+        var top = sorted[at] || {}, count = Math.max(1, Math.floor(num(top.mg && top.mg.idx) || 1)), members = sorted.slice(at, at + count);
+        var totalWeight = members.reduce(function (s, r) { return s + Math.max(0, num(r.weight) || 0); }, 0);
+        var totalQty = members.reduce(function (s, r) { return s + Math.max(0, num(r.qty) || 0); }, 0);
+        var planDelivery = num(top.ov && top.ov.planDel), actualDelivery = members.reduce(function (s, r) { return s + Math.max(0, num(r.delFact) || 0); }, 0);
+        var planWeight = num(top.ov && top.ov.pwPlan), actualWeight = num(top.pwf), planCost = num(top.ov && top.ov.planCost);
+        members.forEach(function (r) {
+          var q = num(r.qty), weight = num(r.weight), sum = num(r.total), ownFact = num(r.delFact);
+          if (!String(r.art || '').trim() || !(q > 0)) return;
+          var share = totalWeight > 0 ? Math.max(0, weight || 0) / totalWeight : (totalQty > 0 ? q / totalQty : 1 / members.length);
+          var fd = count > 1 ? (actualDelivery > 0 ? actualDelivery * share : null) : (ownFact != null && ownFact > 0 ? ownFact : null);
+          var unit = sum != null ? sum / q : num(r.ov && r.ov.unit);
+          var factCost = num(r.ov && r.ov.factCost);
+          if (factCost == null && unit != null && fd != null) factCost = unit + fd / q;
+          out.push({
+            article:String(r.art).trim(), qty:q, sum:sum, weightTotal:weight,
+            actualUnitPrice:unit, actualUnitWeight:weight != null && weight > 0 ? weight / q : null,
+            planDelivery:planDelivery != null ? planDelivery * share : null,
+            actualDelivery:fd, planUnitCost:planCost, actualUnitCost:factCost,
+            planParcelWeight:planWeight, actualParcelWeight:actualWeight,
+            purchased:purchase.status !== 'planned', date:purchase.date || '', source:purchase.name || 'Система'
+          });
+        });
+        at += count;
+      }
+      return out;
+    }
+    function finish(groups, historyRows) {
+      if (run !== catAverageRun) return historyRows || [];
       var nextPrice = {}, nextWeight = {};
       Object.keys(groups).forEach(function (key) {
         var g = groups[key];
@@ -1856,6 +1937,7 @@ service cloud.firestore {
         $('#cmWeight').value = editedWeight == null ? '' : show(Math.round(editedWeight * 1000) / 1000);
       }
       if (state.view === 'cat') renderCat();
+      return historyRows || [];
     }
     function collect(groups, r) {
       var key = String((r && r.art) || '').trim().toLowerCase(), q = num(r && r.qty);
@@ -1865,28 +1947,29 @@ service cloud.firestore {
       if (total != null) { g.total += total; g.priceQty += q; }
       if (weight != null && weight > 0) { g.weight += weight; g.weightQty += q; }
     }
-    var groups = {};
+    var groups = {}, history = [];
     if (mode === 'local') {
-      Object.keys(localItems).forEach(function (pid) { Object.keys(localItems[pid] || {}).forEach(function (id) { collect(groups, localItems[pid][id]); }); });
-      finish(groups); return Promise.resolve();
+      Object.keys(localItems).forEach(function (pid) { var rows = Object.keys(localItems[pid] || {}).map(function (id) { return localItems[pid][id]; }); rows.forEach(function (r) { collect(groups, r); }); history = history.concat(historicalRows(pid, rows)); });
+      return Promise.resolve(finish(groups, history));
     }
-    if (!db) return Promise.resolve();
-    var reads = [];
-    state.purchases.forEach(function (_, pid) { reads.push(db.collection(itemsPath(pid)).get()); });
+    if (!db) return Promise.resolve([]);
+    var reads = [], pids = [];
+    state.purchases.forEach(function (_, pid) { pids.push(pid); reads.push(db.collection(itemsPath(pid)).get()); });
     return Promise.all(reads).then(function (sets) {
-      sets.forEach(function (snap) { snap.forEach(function (doc) { collect(groups, doc.data()); }); });
-      finish(groups);
-    }).catch(function () {});
+      sets.forEach(function (snap, i) { var rows = []; snap.forEach(function (doc) { var r = doc.data(); rows.push(r); collect(groups, r); }); history = history.concat(historicalRows(pids[i], rows)); });
+      return finish(groups, history);
+    }).catch(function () { return []; });
   }
   function flushCat(id) {
     if (mode === 'local') { localSave(); return; }
     var c = state.cat.get(id); if (!c) return;
     var k = 'c:' + id, d = catPayload(c);
-    chain[k] = track((chain[k] || Promise.resolve()).then(function () { return db.collection('catalog').doc(id).set(d); }));
+    var catalogRef = profileCollection('catalog').doc(id);
+    chain[k] = track((chain[k] || Promise.resolve()).then(function () { return catalogRef.set(d); }));
   }
   function delCat(id) {
     state.cat.delete(id);
-    if (mode === 'local') localSave(); else track(db.collection('catalog').doc(id).delete());
+    if (mode === 'local') localSave(); else track(profileCollection('catalog').doc(id).delete());
     renderCat();
   }
   function renderCat() {
@@ -1935,7 +2018,7 @@ service cloud.firestore {
     if (!art) { flash('Вкажіть артикул'); $('#cmArt').focus(); return; }
     var dup = catFind(art);
     if (dup && dup.id !== catEdit) { flash('Такий артикул уже є в каталозі'); return; }
-    var id = catEdit || (mode === 'db' ? db.collection('catalog').doc().id : uid()), old = state.cat.get(id) || {};
+    var id = catEdit || (mode === 'db' ? profileCollection('catalog').doc().id : uid()), old = state.cat.get(id) || {};
     state.cat.set(id, { id: id, art: art, name: $('#cmName').value.trim(), photo: catPhoto, price: num($('#cmPrice').value), purchasePrice: num($('#cmPurchasePrice').value), weight: effectiveCatalogWeight({ art: art, weight: old.weight }), ts: old.ts || Date.now() });
     flushCat(id); closeCatModal(); renderCat();
   }
@@ -1971,7 +2054,7 @@ service cloud.firestore {
 
     if (!photo && price == null && weight == null) return null;
 
-    var catId = mode === 'db' ? db.collection('catalog').doc().id : uid();
+    var catId = mode === 'db' ? profileCollection('catalog').doc().id : uid();
     var newCat = {
       id: catId,
       art: art,
@@ -2752,7 +2835,8 @@ service cloud.firestore {
     recomputeAll();
     touched.forEach(function (t) { if (refs.get(t)) fillInputs(t, true); flushItem(pid, t); });
     if (mode === 'local') { localSave(); return; }
-    track((chain['i:' + id] || Promise.resolve()).then(function () { return db.collection(itemsPath(pid)).doc(id).delete(); }));
+    var deletedItemRef = db.collection(itemsPath(pid)).doc(id);
+    track((chain['i:' + id] || Promise.resolve()).then(function () { return deletedItemRef.delete(); }));
   }
   function applyRemote(id, d) {
     var r = state.rows.get(id);
@@ -3637,7 +3721,7 @@ service cloud.firestore {
     save: function (rows, sourceName) {
       if (mode !== 'db' || !db) return Promise.reject(new Error('Firebase недоступний'));
       rows = JSON.parse(JSON.stringify(Array.isArray(rows) ? rows : []));
-      var ref = db.collection('autopurchaseSources').doc('uploaded-history');
+      var ref = profileCollection('autopurchaseSources').doc('uploaded-history');
       return ref.collection('chunks').get().then(function (snap) {
         return Promise.all(snap.docs.map(function (d) { return d.ref.delete(); }));
       }).then(function () {
@@ -3648,7 +3732,7 @@ service cloud.firestore {
     },
     load: function () {
       if (mode !== 'db' || !db) return Promise.reject(new Error('Firebase недоступний'));
-      return db.collection('autopurchaseSources').get().then(function (sources) {
+      return profileCollection('autopurchaseSources').get().then(function (sources) {
         return Promise.all(sources.docs.map(function (source) { return source.ref.collection('chunks').get(); }));
       }).then(function (sets) {
         var rows = []; sets.forEach(function (snap) { snap.docs.forEach(function (d) { rows = rows.concat(d.data().rows || []); }); }); return rows;
@@ -3678,7 +3762,7 @@ service cloud.firestore {
       var createNew = !!(ev.detail && ev.detail.createNew);
       var targetPid = ev.detail && ev.detail.targetPid;
       if (createNew) {
-        targetPid = mode === 'db' ? db.collection('purchases').doc().id : uid();
+        targetPid = mode === 'db' ? profileCollection('purchases').doc().id : uid();
         var autoOptions = ev.detail.options || {};
         var autoMeta = { name:'Автозакупка · ' + fmtDate(today()), date:today(), status:'planned', cur:'$', rate:num(autoOptions.rate) || lastRate(), ts:Date.now() * 1000 + (seq++ % 1000), ex:false, sum:null, autoFin:true };
         state.purchases.set(targetPid, autoMeta);
@@ -3722,7 +3806,7 @@ service cloud.firestore {
   function loadLocal() {
     mode = 'local';
     var raw = null;
-    try { raw = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { raw = null; }
+    try { raw = JSON.parse(localStorage.getItem(localKey()) || 'null'); } catch (e) { raw = null; }
     if (raw && raw.purchases) {
       Object.keys(raw.purchases).forEach(function (id) { state.purchases.set(id, normMeta(raw.purchases[id])); });
     }
@@ -3734,14 +3818,14 @@ service cloud.firestore {
   }
   function startDb() {
     mode = 'db';
-    db.collection('catalog').onSnapshot(function (snap) {
+    unsubCatalog = profileCollection('catalog').onSnapshot(function (snap) {
       snap.docChanges().forEach(function (ch) {
         if (ch.type === 'removed') { state.cat.delete(ch.doc.id); return; }
         var d = ch.doc.data(); if (d) state.cat.set(ch.doc.id, normCat(d, ch.doc.id));
       });
       if (state.view === 'cat') renderCat();
     }, function () {});
-    db.collection('purchases').onSnapshot(function (snap) {
+    unsubPurchases = profileCollection('purchases').onSnapshot(function (snap) {
       snap.docChanges().forEach(function (ch) {
         var id = ch.doc.id;
         if (ch.type === 'removed') {
@@ -3763,6 +3847,23 @@ service cloud.firestore {
       setStatus('error', errText(err));
       if (!loaded) loadLocal();
     });
+  }
+  function startProfileSync() {
+    if (unsubProfiles || !db) return;
+    unsubProfiles = db.collection('profiles').onSnapshot(function (snap) {
+      var changed = false;
+      snap.docChanges().forEach(function (ch) {
+        if (ch.type === 'removed') {
+          if (ch.doc.id !== 'default' && profiles[ch.doc.id] && ch.doc.id !== activeProfileId) { delete profiles[ch.doc.id]; changed = true; }
+          return;
+        }
+        var d = ch.doc.data();
+        if (d && d.name && (!profiles[ch.doc.id] || profiles[ch.doc.id].name !== d.name)) {
+          profiles[ch.doc.id] = { name: String(d.name) }; changed = true;
+        }
+      });
+      if (changed) { saveProfiles(); renderProfiles(); }
+    }, function () {});
   }
   /* ---------- Firebase integration ---------- */
   function parseFirebaseConfig(str) {
@@ -3893,7 +3994,7 @@ service cloud.firestore {
       return;
     }
     var raw = null;
-    try { raw = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { raw = null; }
+    try { raw = JSON.parse(localStorage.getItem(localKey()) || 'null'); } catch (e) { raw = null; }
     if (!raw || (!raw.purchases && !raw.catalog && !raw.items)) {
       flash('У локальному сховищі немає даних для перенесення');
       return;
@@ -3905,13 +4006,13 @@ service cloud.firestore {
       if (raw.catalog) {
         Object.keys(raw.catalog).forEach(function (id) {
           cCount++;
-          batchPromises.push(db.collection('catalog').doc(id).set(catPayload(normCat(raw.catalog[id], id))));
+          batchPromises.push(profileCollection('catalog').doc(id).set(catPayload(normCat(raw.catalog[id], id))));
         });
       }
       if (raw.purchases) {
         Object.keys(raw.purchases).forEach(function (id) {
           pCount++;
-          batchPromises.push(db.collection('purchases').doc(id).set(metaPayload(normMeta(raw.purchases[id]))));
+          batchPromises.push(profileCollection('purchases').doc(id).set(metaPayload(normMeta(raw.purchases[id]))));
         });
       }
       if (raw.items) {
@@ -3941,6 +4042,99 @@ service cloud.firestore {
   $('#fbSaveBtn').addEventListener('click', saveFbConfig);
   $('#fbDisconnectBtn').addEventListener('click', disconnectFb);
   $('#fbSyncBtn').addEventListener('click', syncLocalToFb);
+
+  /* ---------- Purchase profiles ---------- */
+  function renderProfiles() {
+    var list = $('#profileList');
+    list.textContent = '';
+    profiles.default = { name: 'Основний профіль' };
+    var ids = Object.keys(profiles).sort(function (a, b) { return a === 'default' ? -1 : b === 'default' ? 1 : profiles[a].name.localeCompare(profiles[b].name, 'uk'); });
+    ids.forEach(function (id) {
+      var row = el('div', 'profile-option-row' + (id === activeProfileId ? ' is-active' : ''));
+      var b = el('button', 'profile-option');
+      b.appendChild(el('span', 'profile-option-label', id === 'default' ? 'Основний профіль' : profiles[id].name));
+      b.type = 'button'; b.dataset.profileId = id;
+      b.addEventListener('click', function () { switchProfile(id); });
+      row.appendChild(b);
+      if (id !== 'default') {
+        var del = el('button', 'profile-delete'); del.type = 'button'; del.title = 'Видалити профіль'; del.setAttribute('aria-label', 'Видалити профіль ' + profiles[id].name);
+        del.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>';
+        del.addEventListener('click', function (e) { e.stopPropagation(); deleteProfile(id); });
+        row.appendChild(del);
+      }
+      list.appendChild(row);
+    });
+    var activeName = profiles[activeProfileId].name;
+    var initials = activeName.split(/\s+/).filter(Boolean).slice(0, 2).map(function (word) { return word.charAt(0); }).join('') || 'П';
+    $('#profileName').textContent = initials;
+    $('#profileBtn').title = activeName;
+    $('#profileBtn').setAttribute('aria-label', 'Профіль: ' + activeName);
+  }
+  function closeProfileMenu() { $('#profileMenu').hidden = true; $('#profileBtn').setAttribute('aria-expanded', 'false'); }
+  function resetProfileState() {
+    if (unsubItems) { unsubItems(); unsubItems = null; }
+    if (unsubCatalog) { unsubCatalog(); unsubCatalog = null; }
+    if (unsubPurchases) { unsubPurchases(); unsubPurchases = null; }
+    state.cat.clear(); state.purchases.clear(); state.rows.clear(); state.eff.clear(); refs.clear();
+    localItems = {}; itemsLoaded = false; loaded = false; state.pid = null; state.view = 'list'; state.finPage = 1;
+    tbody.textContent = ''; $('#vDetail').hidden = true; $('#vCat').hidden = true; $('#vFin').hidden = true; $('#vList').hidden = false;
+    $('#createBtn').disabled = true; setTop(); renderList();
+  }
+  function switchProfile(id) {
+    if (!profiles[id] || id === activeProfileId) { closeProfileMenu(); return; }
+    flushAll(); resetProfileState();
+    activeProfileId = id; localStorage.setItem(ACTIVE_PROFILE_KEY, id);
+    renderProfiles(); closeProfileMenu(); setStatus('connecting');
+    if (mode === 'db' && db) startDb(); else loadLocal();
+  }
+  function deleteProfileData(id) {
+    if (mode !== 'db' || !db) return Promise.resolve();
+    var prefix = 'profiles/' + id + '/';
+    var purchases = db.collection(prefix + 'purchases');
+    var catalog = db.collection(prefix + 'catalog');
+    var sources = db.collection(prefix + 'autopurchaseSources');
+    return Promise.all([purchases.get(), catalog.get(), sources.get()]).then(function (sets) {
+      var work = [];
+      sets[0].docs.forEach(function (purchase) {
+        work.push(purchase.ref.collection('items').get().then(function (items) { return Promise.all(items.docs.map(function (item) { return item.ref.delete(); })); }).then(function () { return purchase.ref.delete(); }));
+      });
+      sets[1].docs.forEach(function (item) { work.push(item.ref.delete()); });
+      sets[2].docs.forEach(function (source) {
+        work.push(source.ref.collection('chunks').get().then(function (chunks) { return Promise.all(chunks.docs.map(function (chunk) { return chunk.ref.delete(); })); }).then(function () { return source.ref.delete(); }));
+      });
+      return Promise.all(work);
+    }).then(function () { return db.collection('profiles').doc(id).delete(); });
+  }
+  function deleteProfile(id) {
+    if (id === 'default' || !profiles[id]) return;
+    var name = profiles[id].name;
+    if (!confirm('Ви дійсно хочете видалити профіль «' + name + '»? Усі його закупки та дані буде видалено безповоротно.')) return;
+    closeProfileMenu();
+    if (id === activeProfileId) switchProfile('default');
+    delete profiles[id]; saveProfiles(); localStorage.removeItem(KEY + '.profile.' + id); renderProfiles();
+    deleteProfileData(id).then(function () { flash('Профіль «' + name + '» видалено'); }).catch(function (e) { setStatus('error', errText(e)); });
+  }
+  function openProfileModal() {
+    closeProfileMenu(); $('#profileModal').hidden = false; $('#profileNameInput').value = '';
+    setTimeout(function () { $('#profileNameInput').focus(); }, 0);
+  }
+  function closeProfileModal() { $('#profileModal').hidden = true; }
+
+  $('#profileBtn').addEventListener('click', function (e) {
+    e.stopPropagation(); var menu = $('#profileMenu'); menu.hidden = !menu.hidden;
+    this.setAttribute('aria-expanded', menu.hidden ? 'false' : 'true');
+  });
+  $('#profileCreateBtn').addEventListener('click', openProfileModal);
+  $('#profileCancelBtn').addEventListener('click', closeProfileModal);
+  $('#profileModal').addEventListener('click', function (e) { if (e.target === this) closeProfileModal(); });
+  document.addEventListener('click', function (e) { if (!$('#profilePicker').contains(e.target)) closeProfileMenu(); });
+  $('#profileForm').addEventListener('submit', function (e) {
+    e.preventDefault(); var name = $('#profileNameInput').value.trim(); if (!name) { $('#profileNameInput').focus(); return; }
+    var id = uid(); profiles[id] = { name: name }; saveProfiles(); closeProfileModal(); renderProfiles();
+    if (mode === 'db' && db) db.collection('profiles').doc(id).set({ name:name, createdAt:Date.now() }).catch(function () {});
+    switchProfile(id);
+  });
+  renderProfiles();
 
   /* ---------- Authorization (weekly expiration) ---------- */
   var AUTH_STORAGE_KEY = 'latiao_auth_v1';
@@ -4040,6 +4234,7 @@ service cloud.firestore {
 
     var hasFb = initFirebase();
     if (hasFb && db) {
+      startProfileSync();
       startDb();
     } else {
       loadLocal();

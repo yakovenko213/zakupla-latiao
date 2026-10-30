@@ -11,7 +11,7 @@
     return q <= 50 ? n(boxes.small) : q <= 150 ? n(boxes.medium) : n(boxes.large);
   }
   function normalize(items) {
-    return (items || []).map(function (x) { return { article: String(x.article || x.art || '').trim(), qty: Math.max(0, Math.floor(n(x.qty))), price: n(x.price), weight: n(x.weight) }; }).filter(function (x) { return x.article && x.qty && x.weight > 0; });
+    return (items || []).map(function (x) { return { article: String(x.article || x.art || '').trim(), qty: Math.max(0, Math.floor(n(x.qty))), price: n(x.price), weight: n(x.weight), deliveryFactor: n(x.deliveryFactor) || 1 }; }).filter(function (x) { return x.article && x.qty && x.weight > 0; });
   }
   function calculateParcel(items, options) {
     options = Object.assign({}, D, options || {}); items = normalize(items);
@@ -20,16 +20,19 @@
     var selectedBox = options.boxWeight == null ? boxWeight(qty, options.boxes) : n(options.boxWeight);
     var weight = goodsWeight + selectedBox;
     var goods = items.reduce(function (s, x) { return s + x.qty * x.price; }, 0);
-    var delivery = (weight * options.tariff + options.surcharge * items.length) * options.rate;
-    var allocated = 0;
+    var baseDelivery = (weight * options.tariff + options.surcharge * items.length) * options.rate;
+    var delivery = 0;
     var rows = items.map(function (x, i) {
       var articleWeight = x.qty * x.weight;
-      // Box transport is apportioned with the goods by weight. This guarantees exact reconciliation.
+      // Historical plan/fact ratios correct the tariff estimate for each article.
       var part = goodsWeight ? weight * options.tariff * options.rate * articleWeight / goodsWeight : 0;
       part += options.surcharge * options.rate;
-      if (i === items.length - 1) part = delivery - allocated; else allocated += part;
+      part *= x.deliveryFactor;
+      delivery += part;
       return Object.assign({}, x, { articleWeight: articleWeight, delivery: part, unitCost: x.price + part / x.qty });
     });
+    // Preserve the old exact result when no historical correction is present.
+    if (items.every(function (x) { return x.deliveryFactor === 1; })) delivery = baseDelivery;
     return { items: rows, qty: qty, goodsWeight: goodsWeight, boxWeight: weight - goodsWeight, weight: weight, goods: goods, delivery: delivery, total: goods + delivery, averageUnitCost: qty ? (goods + delivery) / qty : 0 };
   }
   function signature(parcels) { return parcels.map(function (p) { return p.map(function (x) { return x.article + ':' + x.qty; }).sort().join('|'); }).sort().join(' / '); }
@@ -37,7 +40,7 @@
   function withQty(parcel, src, qty) {
     var out = parcel.map(function (x) { return Object.assign({}, x); }), found = null;
     out.forEach(function (x) { if (x.article === src.article) found = x; });
-    if (found) found.qty += qty; else out.push({ article: src.article, qty: qty, price: src.price, weight: src.weight });
+    if (found) found.qty += qty; else out.push({ article: src.article, qty: qty, price: src.price, weight: src.weight, deliveryFactor: src.deliveryFactor });
     return out;
   }
   function maxFit(parcel, src, wanted, options) {
@@ -97,5 +100,32 @@
     return out;
   }
   function median(a) { a = a.filter(function (x) { return isFinite(x); }).sort(function (x, y) { return x - y; }); if (!a.length) return null; var m = Math.floor(a.length / 2); return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
-  return { defaults: D, boxWeight: boxWeight, calculateParcel: calculateParcel, optimize: optimize, parseText: parseText, median: median };
+  function boundedRatio(values, lo, hi) {
+    var m = median(values.filter(function (x) { return x > 0; }));
+    if (m == null) return 1;
+    // These are facts for the exact same article. Applying only part of the
+    // deviation systematically underestimates a repeat purchase when there is
+    // just one previous parcel. Median + bounds handle noisy history instead.
+    return Math.max(lo, Math.min(hi, m));
+  }
+  function learnHistory(records) {
+    records = (records || []).filter(function (r) { return r && n(r.qty) > 0; });
+    var prices = [], weights = [], deliveryRatios = [], weightRatios = [];
+    records.forEach(function (r) {
+      var q = n(r.qty), actualPrice = n(r.actualUnitPrice) || (n(r.sum) > 0 ? n(r.sum) / q : 0);
+      var actualWeight = n(r.actualUnitWeight) || (n(r.weightTotal) > 0 ? n(r.weightTotal) / q : 0);
+      if (actualPrice > 0) prices.push(actualPrice);
+      if (actualWeight > 0) weights.push(actualWeight);
+      var pd = n(r.planDelivery), fd = n(r.actualDelivery);
+      if (pd > 0 && fd > 0) deliveryRatios.push(fd / pd);
+      else {
+        var pc = n(r.planUnitCost), fc = n(r.actualUnitCost);
+        if (pc > actualPrice && fc > actualPrice) deliveryRatios.push((fc - actualPrice) / (pc - actualPrice));
+      }
+      var pw = n(r.planParcelWeight), fw = n(r.actualParcelWeight);
+      if (pw > 0 && fw > 0) weightRatios.push(fw / pw);
+    });
+    return { price:median(prices), weight:median(weights), weightFactor:boundedRatio(weightRatios, .7, 1.5), deliveryFactor:boundedRatio(deliveryRatios, .6, 1.8), records:records.length, factualDelivery:deliveryRatios.length, factualWeight:weightRatios.length };
+  }
+  return { defaults: D, boxWeight: boxWeight, calculateParcel: calculateParcel, optimize: optimize, parseText: parseText, median: median, learnHistory: learnHistory };
 }));
